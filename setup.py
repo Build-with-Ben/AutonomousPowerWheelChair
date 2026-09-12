@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'simple_tx_node = rnet_bridge.simple_tx_node:main',
         ],
     },
 )
