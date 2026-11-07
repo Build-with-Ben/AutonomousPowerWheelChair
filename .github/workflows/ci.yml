@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    container: ros:jazzy-ros-base
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out into workspace src/
+        uses: actions/checkout@v4
+        with:
+          path: src
+
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y python3-colcon-common-extensions python3-pytest-cov
+          rosdep update
+          rosdep install --from-paths src --ignore-src -y
+
+      - name: Build
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon build --event-handlers console_cohesion+
+
+      - name: Test
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon test --pytest-with-coverage --event-handlers console_cohesion+
+          colcon test-result --verbose
+
+      - name: Requirement trace
+        if: always()
+        run: |
+          python3 src/tools/req_trace.py --root src | tee trace.md
+          cat trace.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            build/*/pytest.xml
+            build/*/coverage.xml
+            trace.md
+          if-no-files-found: ignore
