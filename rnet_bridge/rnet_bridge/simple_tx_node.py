@@ -1,6 +1,7 @@
+from can_msgs.msg import Frame
 import rclpy
 from rclpy.node import Node
-from can_msgs.msg import Frame
+
 
 class SimpleTxNode(Node):
     def __init__(self):
@@ -19,12 +20,14 @@ class SimpleTxNode(Node):
         self.get_logger().info(f'Sent frame id=0x123 counter={self.counter}')
         self.counter = (self.counter + 1) % 256
 
+
 def main(args=None):
     rclpy.init(args=args)
     node = SimpleTxNode()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()

@@ -5,7 +5,8 @@ safe **input → control → output** loop with safety and diagnostics in betwee
 and avoidance are the long-term goal and are captured in [11_future_autonomy.md](11_future_autonomy.md).
 
 See [../layer-stack.md](../layer-stack.md) for the layers and [../data-flow.md](../data-flow.md)
-for how commands move between modules.
+for how commands move between modules. See [../test_plan.md](../test_plan.md) for how each
+requirement is verified.
 
 ## Domains
 
