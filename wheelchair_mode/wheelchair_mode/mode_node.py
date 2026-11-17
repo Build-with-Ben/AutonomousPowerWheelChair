@@ -8,6 +8,7 @@ Safety reports no fault (3.1.3, 3.2.2). Runs on the default single-threaded exec
 """
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from wheelchair_mode.mode_logic import ModeManager
 from wheelchair_msgs.msg import ModeState, SafetyState
@@ -86,11 +87,12 @@ def main(args=None):
     node = ModeNode()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

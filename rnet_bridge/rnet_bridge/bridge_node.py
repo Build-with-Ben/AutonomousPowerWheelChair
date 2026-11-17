@@ -24,6 +24,7 @@ from can_msgs.msg import Frame
 from geometry_msgs.msg import Twist
 from rcl_interfaces.msg import SetParametersResult
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rnet_bridge.bridge_logic import JoystickFollower, ReplyMeter, StatusTracker, TxHealth
 from wheelchair_msgs.msg import RnetStatus
@@ -251,11 +252,12 @@ def main(args=None):
     node = BridgeNode()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

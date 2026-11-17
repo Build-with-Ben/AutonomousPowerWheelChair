@@ -13,6 +13,7 @@ executor, so the callbacks never overlap.
 
 from geometry_msgs.msg import Twist
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from wheelchair_control.limits import (
     AccelLimiter, clamp_command, DEFAULT_PRIORITIES, PROFILES, SourceArbiter)
@@ -100,11 +101,12 @@ def main(args=None):
     node = ControlNode()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
