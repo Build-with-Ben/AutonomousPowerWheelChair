@@ -1,0 +1,52 @@
+# Shared default parameters for the full stack (requirement 9.2.1).
+# Values that differ between machines go in a separate override file (9.2.2);
+# interface, tx_enabled and limits_profile are set from launch arguments.
+
+/rnet_bridge:
+  ros__parameters:
+    pm_nibble: 0              # power module device nibble, measured on the chair
+    joystick_nibble: 2       # joystick module device nibble, measured on the chair
+    current_scale: 1.0       # amps per raw count; TBD against a clamp meter (6.4.4)
+    pm_heartbeat_timeout: 2.5
+    rx_silent_timeout: 1.0
+    status_rate_hz: 10.0
+    max_pct: 20              # joystick percent cap (6.3.6)
+    cmd_stale_timeout: 0.1   # stop replying if /cmd_vel/safe is older than this (6.3.4)
+    override_rearm_time: 0.5 # re-arm delay after the chair joystick is centred (6.3.8.2)
+
+/wheelchair_safety:
+  ros__parameters:
+    cmd_timeout: 0.2
+    heartbeat_timeout: 2.5
+    current_limit: -1.0      # < 0 disables the over-current check until measured (5.3.2)
+    current_time: 2.0
+    status_timeout: 1.0
+    battery_warn_pct: 20.0
+    battery_limit_pct: 10.0
+    battery_speed_scale: 0.25
+    max_linear: 0.5
+    max_angular: 1.0
+    output_rate_hz: 50.0
+    state_rate_hz: 10.0
+
+/wheelchair_control:
+  ros__parameters:
+    source_timeout: 0.25
+    output_rate_hz: 20.0
+    default_mode: idle        # blocks all sources until Mode Manager reports otherwise
+    mode_timeout: 2.0
+
+/wheelchair_mode:
+  ros__parameters:
+    auto_enabled: false       # Auto stays unavailable until 1.1.3 is lifted (3.2.6)
+    state_rate_hz: 1.0
+
+/wheelchair_test_sequences:
+  ros__parameters:
+    sequence: forward_back
+    speed: 0.1
+    ramp: 1.0
+    hold: 3.0
+    pause: 1.0
+    output_rate_hz: 20.0
+    return_to_idle: true
