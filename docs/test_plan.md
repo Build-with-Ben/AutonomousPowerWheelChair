@@ -56,6 +56,22 @@ so a test can step time forward instead of sleeping.
 **3.4 Parameters, not constants.** Anything marked *(param)* in the requirements is a ROS parameter.
 That lets tests set short timeouts and makes it easy to cover edge values.
 
+**3.5 L2 conventions.** Each node has a `test_<name>_node.py` using `launch_testing`. Four rules
+keep those suites fast and reliable:
+
+- **Shorten the timeouts through parameters.** The launch description sets short values (e.g. a
+  0.4 s heartbeat timeout instead of 2.5 s), so a suite runs in seconds. This is what 3.4 buys.
+- **Number the tests.** The node is launched once per class, so latched faults and modes carry
+  between tests. `test_01_`, `test_02_` … fix the order, and each test after the first starts from
+  a known state (for safety, `make_healthy_and_reset`).
+- **Give every suite its own `ROS_DOMAIN_ID`.** `colcon` runs packages in parallel and the suites
+  share topic names, so without this one suite's harness perturbs another's node.
+- **Assert a clean exit.** A `@launch_testing.post_shutdown_test()` class calls
+  `assertExitCodes(proc_info)`, so a crash on shutdown can't pass unnoticed.
+
+A harness node publishes the inputs, collects the outputs and calls the services; its `pump()`
+helper spins while feeding inputs, which is how a watchdog or rate is measured over real time.
+
 ## 4. Requirement traceability
 
 **4.1 Tag tests with requirement IDs.** Each test names the requirement(s) it verifies:
@@ -79,9 +95,18 @@ The `req` marker is registered in each package's `setup.cfg`.
 | **I** Inspection | The PR review checklist (§6.4). |
 | **A** Analysis | A short write-up in `docs/` linked from the requirement. |
 
-**4.3 Trace report.** `tools/req_trace.py` reads the requirements and the `@pytest.mark.req` tags,
-then prints which requirements have automated tests. CI adds the report to every run's summary.
-For now it only reports. Once the P1 code exists, CI will fail if any P1 **T** requirement has no test.
+**4.3 Trace report and gate.** `tools/req_trace.py` reads the requirements and the
+`@pytest.mark.req` tags, then prints which requirements have automated tests. CI adds the report to
+every run's summary and fails the build on any of:
+
+- a tag that matches no requirement (a typo'd ID),
+- a P1 **T** requirement with no test that is not listed in
+  [requirements/p1_test_debt.txt](requirements/p1_test_debt.txt),
+- an entry in that debt file that now has a test.
+
+The debt file is a ratchet. It records the P1 requirements still waiting on code, with a reason
+each, so new untested P1 requirements cannot be added while the backlog is worked off; and because
+a newly tested entry fails the build until its line is deleted, the list can only shrink.
 
 ## 5. Test coverage by domain
 
@@ -115,7 +140,7 @@ Runs on every pull request, on every push to `main`, and on demand.
 |---|---|
 | Build | Any package fails to build. |
 | Test | Any lint, unit or node test fails (`colcon test-result` exits non-zero). |
-| Trace | Never, for now (report only). Later: a P1 **T** requirement has no test. |
+| Trace | A tag matches no requirement; a P1 **T** requirement has no test and is not in `p1_test_debt.txt`; a debt entry is now tested. |
 
 Artifacts kept for each run: `pytest.xml` per package, coverage XML, and the trace report.
 
@@ -187,9 +212,19 @@ colcon test --packages-select rnet_bridge --pytest-args -m vcan
 
 ## 9. Order of work
 
-1. **Now:** CI with L0–L2, lint passing, the `req` marker and the trace report. *(this branch)*
-2. `rnet_bridge/frames.py` and its L1 tests, written test-first from domain 6.
-3. Safety logic and its L1 tests, then the L2 node tests for 5.2 and 5.3.
-4. Bridge TX timer, plus the L3 `vcan` CI job.
-5. Motor Control, Operator Input and Mode Management, each with L1 and L2 tests.
-6. First L4 bench run, then the first release tag.
+**Done:** CI with L0 lint and the trace report; L1 logic tests for domains 2-8 (96-100% coverage of
+the logic modules); the bridge, safety, control, mode and test-sequence nodes; the bringup launch;
+L2 node tests for safety, mode, control and test sequences; a first wheels-off bench run.
+
+**Next:**
+
+1. Operator Input: the teleop node, so manual driving and the software e-stop exist at all. Its L1
+   logic and tests are already written.
+2. L3 `vcan` CI job, plus the bridge's L2/L3 tests (it needs a CAN interface, so it is the one node
+   with no L2 suite yet).
+3. Diagnostics node, and TX-failure fields on `RnetStatus` so Safety can latch a CAN TX failure
+   (6.5.2, 5.3.5).
+4. Rosbag recording on by default for sequence runs (9.3.1, 9.3.2), and the per-machine config
+   overrides (9.2.2).
+5. Gate CI on coverage and on the P1 trace, instead of only reporting them.
+6. First full L4 bench checklist, then the first release tag.

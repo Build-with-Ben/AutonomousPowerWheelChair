@@ -45,6 +45,18 @@ def load_tags(root):
     return tags
 
 
+def load_allowed(path):
+    """Return the set of requirement IDs allowed to have no test, from a debt file."""
+    if path is None:
+        return set()
+    allowed = set()
+    for line in Path(path).read_text().splitlines():
+        line = line.split('#', 1)[0].strip()
+        if line:
+            allowed.add(line)
+    return allowed
+
+
 def covers(tag_id, req_id):
     """Match a tag to a requirement; a sub-requirement tag (5.3.1.2) counts for its parent."""
     return tag_id == req_id or tag_id.startswith(req_id + '.')
@@ -56,6 +68,9 @@ def main():
                         help='repository root (the workspace src/ folder)')
     parser.add_argument('--fail-on-missing-p1', action='store_true',
                         help='exit 1 if any P1 requirement verified by Test has no tagged test')
+    parser.add_argument('--allow-missing-p1', type=Path, default=None,
+                        help='file of requirement IDs exempt from --fail-on-missing-p1; '
+                             'an entry that now has a test is reported as stale')
     args = parser.parse_args()
 
     reqs = load_requirements(args.root / 'docs' / 'requirements')
@@ -89,7 +104,23 @@ def main():
         print('<details><summary>P1 Test requirements without a test ({})</summary>\n\n{}\n\n'
               '</details>'.format(len(missing_p1), ', '.join(missing_p1)))
 
-    if args.fail_on_missing_p1 and missing_p1:
+    allowed = load_allowed(args.allow_missing_p1)
+    unexpected = sorted(r for r in missing_p1 if r not in allowed)
+    # An allowed ID that now has a test, or is no longer a P1 Test requirement, is stale.
+    p1_test = {r[0] for r in rows if r[1] == 'P1' and r[2] == 'T'}
+    stale = sorted(r for r in allowed if r not in missing_p1 and r in p1_test)
+    unknown_allowed = sorted(r for r in allowed if r not in p1_test)
+
+    if unexpected:
+        print('**P1 Test requirements with no test and not listed as known debt:** '
+              '{}\n'.format(', '.join(unexpected)))
+    if stale:
+        print('**Now tested, so remove from the P1 debt list:** {}\n'.format(', '.join(stale)))
+    if unknown_allowed:
+        print('**Listed as P1 debt but not a P1 Test requirement:** '
+              '{}\n'.format(', '.join(unknown_allowed)))
+
+    if args.fail_on_missing_p1 and (unexpected or stale or unknown_allowed):
         return 1
     return 1 if unknown else 0
 

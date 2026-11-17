@@ -16,6 +16,7 @@ executor, so the callbacks never overlap.
 from can_msgs.msg import Frame
 from geometry_msgs.msg import Twist
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from std_srvs.srv import Trigger
 from wheelchair_msgs.msg import ModeState, RnetStatus, SafetyState
@@ -178,11 +179,12 @@ def main(args=None):
     node = SequenceNode()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
