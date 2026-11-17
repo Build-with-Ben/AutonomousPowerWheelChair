@@ -2,7 +2,13 @@
 R-Net frame encoding and decoding (requirements 6.2, 6.3.2, 6.4.1).
 
 Pure logic, no rclpy. Frame IDs come from the open-rnet frame dictionary. In each
-device-specific ID the ``X`` nibble (bits 8-11) is the chair's device nibble (6.2.1).
+device-specific ID the ``X`` nibble (bits 8-11) is the device number of the module that
+sends it. Modules have different numbers, so the joystick module (JSM) nibble and the
+power module (PM) nibble are separate parameters (6.2.1). Measured on the test chair:
+JSM = 2, PM = 0.
+
+Joystick signs, measured on the test chair: forward = +Y, **left = -X** (positive X is a
+right turn). ROS positive ``angular.z`` is a left turn (1.3.5.3), so X = -angular.z.
 """
 
 JOYSTICK_BASE = 0x02000000        # 02000X00
@@ -38,13 +44,14 @@ def twist_to_joystick(linear_x, angular_z, linear_limit, angular_limit, max_pct=
     Scale a velocity command to joystick percent ``(x, y)``.
 
     A command at the full speed limit maps to ``±max_pct`` (6.3.2.1, 6.3.2.2, 6.3.6).
-    Anything beyond the limit is clamped to ``±max_pct``.
+    Anything beyond the limit is clamped to ``±max_pct``. X is negated because R-Net
+    positive X turns right while ROS positive ``angular.z`` turns left.
     """
     if linear_limit <= 0 or angular_limit <= 0:
         raise ValueError('speed limits must be positive')
     if not 0 <= max_pct <= PCT_LIMIT:
         raise ValueError(f'max_pct must be 0..{PCT_LIMIT}, got {max_pct}')
-    x = clamp_pct(angular_z / angular_limit * max_pct, max_pct)
+    x = clamp_pct(-angular_z / angular_limit * max_pct, max_pct)
     y = clamp_pct(linear_x / linear_limit * max_pct, max_pct)
     return x, y
 
@@ -61,22 +68,23 @@ def decode_joystick(data):
     return tuple(b - 256 if b > 127 else b for b in data[:2])
 
 
-def decode_status(frame_id, data, nibble, current_scale=1.0):
+def decode_status(frame_id, data, pm_nibble, current_scale=1.0):
     """
     Decode a status frame into a dict of RnetStatus fields (6.4.1).
 
     Returns ``None`` for any frame ID it doesn't know or data it can't decode, so the
-    caller can count it (6.4.3) instead of raising.
+    caller can count it (6.4.3) instead of raising. ``pm_nibble`` is the power module's
+    device number, which is used in the heartbeat, current and battery frame IDs.
     """
     data = bytes(data)
-    if frame_id == device_id(PM_HEARTBEAT_BASE, nibble):
+    if frame_id == device_id(PM_HEARTBEAT_BASE, pm_nibble):
         return {'pm_alive': True}
-    if frame_id == device_id(MOTOR_CURRENT_BASE, nibble):
+    if frame_id == device_id(MOTOR_CURRENT_BASE, pm_nibble):
         if len(data) < 2:
             return None
         raw = int.from_bytes(data[:2], 'little')
         return {'motor_current_a': raw * current_scale}
-    if frame_id == device_id(BATTERY_BASE, nibble):
+    if frame_id == device_id(BATTERY_BASE, pm_nibble):
         if len(data) < 1:
             return None
         return {'battery_pct': min(data[0], 100)}

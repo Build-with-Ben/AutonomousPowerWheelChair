@@ -4,12 +4,13 @@ import pytest
 from rnet_bridge.bridge_logic import JitterMeter, JoystickTx, StatusTracker, TxHealth
 
 
-NIBBLE = 0x3
+JSM_NIBBLE = 0x2
+PM_NIBBLE = 0x0
 
 
 def make_tx(**kwargs):
     kwargs.setdefault('tx_enabled', True)
-    return JoystickTx(NIBBLE, **kwargs)
+    return JoystickTx(JSM_NIBBLE, **kwargs)
 
 
 # --- 6.3 command transmission --------------------------------------------------------------
@@ -18,13 +19,13 @@ def make_tx(**kwargs):
 def test_frame_uses_joystick_id_and_dlc_2():
     tx = make_tx()
     frame_id, data = tx.next_frame(now=0.0)
-    assert frame_id == 0x02000300
+    assert frame_id == 0x02000200
     assert len(data) == 2
 
 
 @pytest.mark.req('6.3.5', '9.1.5')
 def test_tx_disabled_by_default():
-    tx = JoystickTx(NIBBLE)
+    tx = JoystickTx(JSM_NIBBLE)
     tx.set_command(0.5, 0.0, now=0.0)
     assert tx.tx_enabled is False
     assert tx.next_frame(now=0.0) is None
@@ -63,7 +64,7 @@ def test_same_command_repeated_every_tick_without_new_input():
 def test_stale_command_sends_zero():
     tx = make_tx(stale_timeout=0.1)
     tx.set_command(0.5, 1.0, now=0.0)
-    assert tx.joystick_pct(now=0.100) == (20, 20)
+    assert tx.joystick_pct(now=0.100) == (-20, 20)   # left turn -> negative X
     assert tx.joystick_pct(now=0.101) == (0, 0)
 
 
@@ -81,7 +82,7 @@ def test_max_pct_defaults_to_20():
     tx = make_tx()
     assert tx.max_pct == 20
     tx.set_command(10.0, -10.0, now=0.0)
-    assert tx.joystick_pct(now=0.0) == (-20, 20)
+    assert tx.joystick_pct(now=0.0) == (20, 20)    # right turn -> positive X
 
 
 # --- 6.3.7 jitter ------------------------------------------------------------------------
@@ -108,17 +109,17 @@ def test_jitter_reports_worst_deviation():
 
 @pytest.mark.req('6.4.1', '6.4.2')
 def test_status_fields_carry_last_update_time():
-    tracker = StatusTracker(NIBBLE)
-    tracker.on_frame(0x0C140300, b'', now=1.0)
-    tracker.on_frame(0x1C0C0300, bytes([80]), now=1.5)
-    tracker.on_frame(0x1C0C0300, bytes([79]), now=2.5)
+    tracker = StatusTracker(PM_NIBBLE)
+    tracker.on_frame(0x0C140000, b'', now=1.0)
+    tracker.on_frame(0x1C0C0000, bytes([80]), now=1.5)
+    tracker.on_frame(0x1C0C0000, bytes([79]), now=2.5)
     assert tracker.fields == {'pm_alive': True, 'battery_pct': 79}
     assert tracker.stamps == {'pm_alive': 1.0, 'battery_pct': 2.5}
 
 
 @pytest.mark.req('6.4.3', '7.2.3.3')
 def test_unknown_frames_counted_by_id_without_error():
-    tracker = StatusTracker(NIBBLE)
+    tracker = StatusTracker(PM_NIBBLE)
     for _ in range(3):
         tracker.on_frame(0x123, bytes(8), now=0.0)
     tracker.on_frame(0x456, b'', now=0.0)
@@ -128,14 +129,14 @@ def test_unknown_frames_counted_by_id_without_error():
 
 @pytest.mark.req('6.5.3')
 def test_rx_silent_after_timeout():
-    tracker = StatusTracker(NIBBLE, rx_silent_timeout=1.0, now=0.0)
+    tracker = StatusTracker(PM_NIBBLE, rx_silent_timeout=1.0, now=0.0)
     assert not tracker.rx_silent(now=0.99)
     assert tracker.rx_silent(now=1.0)
 
 
 @pytest.mark.req('6.5.3')
 def test_any_frame_clears_rx_silent():
-    tracker = StatusTracker(NIBBLE, rx_silent_timeout=1.0, now=0.0)
+    tracker = StatusTracker(PM_NIBBLE, rx_silent_timeout=1.0, now=0.0)
     tracker.on_frame(0x123, b'', now=1.5)  # unknown frames still count as traffic
     assert not tracker.rx_silent(now=2.0)
     assert tracker.rx_count == 1

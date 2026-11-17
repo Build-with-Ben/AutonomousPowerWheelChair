@@ -4,7 +4,9 @@ import pytest
 from rnet_bridge import frames
 
 
-NIBBLE = 0x3
+# Device numbers measured on the test chair (2026-11-17 bus capture).
+JSM_NIBBLE = 0x2
+PM_NIBBLE = 0x0
 
 
 @pytest.mark.req('6.2.1')
@@ -15,6 +17,11 @@ NIBBLE = 0x3
 ])
 def test_joystick_id_uses_device_nibble(nibble, expected):
     assert frames.joystick_id(nibble) == expected
+
+
+@pytest.mark.req('6.2.1', '6.2.2')
+def test_measured_joystick_id():
+    assert frames.joystick_id(JSM_NIBBLE) == 0x02000200
 
 
 @pytest.mark.req('6.2.1')
@@ -74,8 +81,8 @@ def test_joystick_round_trip(x, y):
 
 @pytest.mark.req('6.3.2.1', '6.3.2.2', '6.3.6')
 def test_full_limit_maps_to_max_pct():
-    assert frames.twist_to_joystick(0.5, 1.0, 0.5, 1.0, max_pct=20) == (20, 20)
-    assert frames.twist_to_joystick(-0.5, -1.0, 0.5, 1.0, max_pct=20) == (-20, -20)
+    assert frames.twist_to_joystick(0.5, -1.0, 0.5, 1.0, max_pct=20) == (20, 20)
+    assert frames.twist_to_joystick(-0.5, 1.0, 0.5, 1.0, max_pct=20) == (-20, -20)
 
 
 @pytest.mark.req('6.3.2.2')
@@ -85,16 +92,39 @@ def test_linear_scales_proportionally():
 
 
 @pytest.mark.req('6.3.2.1', '1.3.5.3')
-def test_turn_sign_follows_angular_z():
+def test_left_turn_sends_negative_x():
+    # Measured on the chair: holding the stick left gives X = -96, so a ROS left turn
+    # (positive angular.z) must encode as negative X.
     x_left, _ = frames.twist_to_joystick(0.0, 0.5, 0.5, 1.0, max_pct=20)
     x_right, _ = frames.twist_to_joystick(0.0, -0.5, 0.5, 1.0, max_pct=20)
-    assert x_left == 10
-    assert x_right == -10
+    assert x_left == -10
+    assert x_right == 10
+
+
+@pytest.mark.req('6.3.2.2')
+def test_forward_sends_positive_y():
+    # Measured on the chair: holding the stick forward gives Y = +96.
+    _, y_forward = frames.twist_to_joystick(0.25, 0.0, 0.5, 1.0, max_pct=20)
+    _, y_reverse = frames.twist_to_joystick(-0.25, 0.0, 0.5, 1.0, max_pct=20)
+    assert y_forward == 10
+    assert y_reverse == -10
+
+
+@pytest.mark.req('6.3.2.1', '6.3.2.2')
+@pytest.mark.parametrize('data, linear_sign, angular_sign', [
+    (bytes([0x00, 0x60]), 1, 0),    # chair JSM, stick forward: Y = +96
+    (bytes([0xA0, 0x00]), 0, 1),    # chair JSM, stick left:    X = -96
+])
+def test_encoding_matches_chair_joystick_frames(data, linear_sign, angular_sign):
+    jsm_x, jsm_y = frames.decode_joystick(data)
+    x, y = frames.twist_to_joystick(0.5 * linear_sign, 1.0 * angular_sign, 0.5, 1.0, 100)
+    assert (x > 0) == (jsm_x > 0) and (x < 0) == (jsm_x < 0)
+    assert (y > 0) == (jsm_y > 0) and (y < 0) == (jsm_y < 0)
 
 
 @pytest.mark.req('6.3.2.3', '6.3.6')
 def test_command_beyond_limit_clamps_to_max_pct():
-    assert frames.twist_to_joystick(5.0, -5.0, 0.5, 1.0, max_pct=20) == (-20, 20)
+    assert frames.twist_to_joystick(5.0, -5.0, 0.5, 1.0, max_pct=20) == (20, 20)
 
 
 @pytest.mark.req('6.3.6')
@@ -114,45 +144,45 @@ def test_non_positive_limits_are_rejected():
 
 @pytest.mark.req('6.4.1')
 def test_decode_pm_heartbeat():
-    assert frames.decode_status(0x0C140300, b'', NIBBLE) == {'pm_alive': True}
+    assert frames.decode_status(0x0C140000, b'', PM_NIBBLE) == {'pm_alive': True}
 
 
 @pytest.mark.req('6.4.1')
 def test_decode_motor_current_is_16_bit_little_endian():
-    status = frames.decode_status(0x14300300, bytes([0x34, 0x12]), NIBBLE)
+    status = frames.decode_status(0x14300000, bytes([0x34, 0x12]), PM_NIBBLE)
     assert status == {'motor_current_a': 0x1234}
 
 
 @pytest.mark.req('6.4.1', '6.4.4')
 def test_decode_motor_current_applies_scale():
-    status = frames.decode_status(0x14300300, bytes([100, 0]), NIBBLE, current_scale=0.1)
+    status = frames.decode_status(0x14300000, bytes([100, 0]), PM_NIBBLE, current_scale=0.1)
     assert status['motor_current_a'] == pytest.approx(10.0)
 
 
 @pytest.mark.req('6.4.1')
 @pytest.mark.parametrize('raw, expected', [(0, 0), (55, 55), (100, 100), (200, 100)])
 def test_decode_battery_pct_limited_to_100(raw, expected):
-    assert frames.decode_status(0x1C0C0300, bytes([raw]), NIBBLE) == {'battery_pct': expected}
+    assert frames.decode_status(0x1C0C0000, bytes([raw]), PM_NIBBLE) == {'battery_pct': expected}
 
 
 @pytest.mark.req('6.4.1')
 def test_decode_motor_events():
-    assert frames.decode_status(0x0C000005, b'', NIBBLE) == {
+    assert frames.decode_status(0x0C000005, b'', PM_NIBBLE) == {
         'motors_stopped': True, 'motors_decelerating': False}
-    assert frames.decode_status(0x0C000006, b'', NIBBLE) == {
+    assert frames.decode_status(0x0C000006, b'', PM_NIBBLE) == {
         'motors_stopped': False, 'motors_decelerating': True}
 
 
 @pytest.mark.req('6.4.1', '6.2.1')
 def test_status_from_other_device_nibble_is_not_decoded():
-    assert frames.decode_status(0x0C140400, b'', NIBBLE) is None
+    assert frames.decode_status(0x0C140100, b'', PM_NIBBLE) is None
 
 
 @pytest.mark.req('6.4.3')
 @pytest.mark.parametrize('frame_id, data', [
     (0x123, bytes(8)),            # unknown ID
-    (0x14300300, bytes([0x01])),  # current frame too short
-    (0x1C0C0300, b''),            # battery frame empty
+    (0x14300000, bytes([0x01])),  # current frame too short
+    (0x1C0C0000, b''),            # battery frame empty
 ])
 def test_undecodable_frames_return_none(frame_id, data):
-    assert frames.decode_status(frame_id, data, NIBBLE) is None
+    assert frames.decode_status(frame_id, data, PM_NIBBLE) is None

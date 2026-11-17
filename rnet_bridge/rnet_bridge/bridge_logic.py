@@ -13,9 +13,9 @@ from rnet_bridge import frames
 class JoystickTx:
     """Holds the latest ``/cmd_vel/safe`` command and builds each joystick frame."""
 
-    def __init__(self, nibble, linear_limit=0.5, angular_limit=1.0, max_pct=20,
+    def __init__(self, joystick_nibble, linear_limit=0.5, angular_limit=1.0, max_pct=20,
                  stale_timeout=0.1, tx_enabled=False):
-        self.frame_id = frames.joystick_id(nibble)
+        self.frame_id = frames.joystick_id(joystick_nibble)
         self.linear_limit = linear_limit
         self.angular_limit = angular_limit
         self.max_pct = max_pct
@@ -47,8 +47,8 @@ class JoystickTx:
 class StatusTracker:
     """Decodes received frames and keeps the latest RnetStatus fields (6.4)."""
 
-    def __init__(self, nibble, current_scale=1.0, rx_silent_timeout=1.0, now=0.0):
-        self.nibble = nibble
+    def __init__(self, pm_nibble, current_scale=1.0, rx_silent_timeout=1.0, now=0.0):
+        self.pm_nibble = pm_nibble
         self.current_scale = current_scale
         self.rx_silent_timeout = rx_silent_timeout
         self.fields = {}
@@ -61,7 +61,7 @@ class StatusTracker:
         """Handle one frame from ``/from_can_bus``. Never raises on unknown frames."""
         self.rx_count += 1
         self._last_rx = now
-        decoded = frames.decode_status(frame_id, data, self.nibble, self.current_scale)
+        decoded = frames.decode_status(frame_id, data, self.pm_nibble, self.current_scale)
         if decoded is None:
             self.unknown[frame_id] += 1
             return
