@@ -60,7 +60,7 @@ flowchart TB
 | Application | navigation | Planned | Nav2, coverage paths |
 | Application | docking | Planned | Return to charger |
 | Middleware | Inter-module Comms | In progress | ROS 2 topics and services, `wheelchair_msgs` |
-| Control & Services | Control | In progress | twist_mux arbitration, speed/accel limits |
+| Control & Services | Control | In progress | Priority arbitration, mode gating, speed/accel limits |
 | Control & Services | Safety | In progress | Watchdog, PM heartbeat, over-current, e-stop |
 | Control & Services | Mode Manager | Planned | Idle · Manual · Test · Auto · Fault · E-stop |
 | Control & Services | Diagnostics | In progress | Bus health, node status |

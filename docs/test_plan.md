@@ -89,7 +89,7 @@ For now it only reports. Once the P1 code exists, CI will fail if any P1 **T** r
 |---|---|---|---|---|
 | 2 Operator Input | Axis mapping, deadzone, scaling, deadman logic | `/joy` in → `/cmd_vel/teleop` out; release → zero then silence | — | Real gamepad; disconnect stops chair |
 | 3 Mode Management | Every allowed and refused transition; fault forces Fault | `/mode/request` service; fault on `/safety/state` → Fault in 50 ms | — | Mode changes logged |
-| 4 Motor Control | Speed clamp, reverse limit, accel limiter | twist_mux priority and timeout; mode blocks a source | — | Bring-up profile limits observed |
+| 4 Motor Control | Speed clamp, reverse limit, accel limiter | priority and timeout arbitration; mode blocks a source | — | Bring-up profile limits observed |
 | 5 Safety | Each check alone: watchdog, heartbeat, current, e-stop, battery; latch and reset | Input stops → zero in 200 ms; heartbeat stops → latch; reset refused while cause present | Kill safety node → bridge stops replying | All 8.3.3 stop tests |
 | 6 CAN Communication | Joystick encode (scaling, clamping, sign); status decode for each frame ID; reply and override logic | `/cmd_vel/safe` → `/to_can_bus` content; stale input → no reply | Reply ≤ 1 ms after each fixture JSM frame on `vcan0`; silence while deflected; extended IDs; TX failure reported | Device nibble, current scale, PM response |
 | 7 Diagnostics | Level thresholds (battery, late replies) | `/diagnostics` published at 1 Hz with right levels | Bus counters move on `vcan0` | Pi temperature and voltage during a run |
