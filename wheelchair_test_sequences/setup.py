@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'sequence_node = wheelchair_test_sequences.sequence_node:main',
         ],
     },
 )
