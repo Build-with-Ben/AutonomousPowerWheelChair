@@ -5,7 +5,8 @@ Input: `/cmd_vel/safe`, `/from_can_bus`. Output: `/to_can_bus`, `/rnet/status`.
 
 Frame IDs come from the open-rnet frame dictionary
 (https://github.com/redragonx/open-rnet/blob/main/reference/RNET_FRAME_DICTIONARY.md).
-In each ID, `X` is the chair's device nibble.
+In each ID, `X` is the device nibble of the module that sends the frame. Modules have different
+numbers: on the test chair the joystick module (JSM) is 2 and the power module (PM) is 0.
 
 ## 6.1 Bus interface
 
@@ -19,9 +20,9 @@ In each ID, `X` is the chair's device nibble.
 
 ## 6.2 Device identification
 
-**6.2.1** The device nibble `X` shall be a parameter. — P1 · I
+**6.2.1** The device nibbles shall be parameters, with one for the joystick frames (`joystick_nibble`) and one for the power module status frames (`pm_nibble`), because the two modules have different numbers. — P1 · I
 
-**6.2.2** The correct value of `X` for this chair shall be found from a bus capture and recorded in the bringup config. — P1 · T · *TBD*
+**6.2.2** The correct nibble values for this chair shall be found from a bus capture and recorded in the bringup config. Found on 2026-11-17 (listen-only `candump`): `joystick_nibble` = 2 (`02000200`), `pm_nibble` = 0 (`0C140000`, `1C0C0000`, `14300000`). They still need to go in the bringup config once it exists. — P1 · T
 
 **6.2.3** How the chair's own joystick module is handled (disabled, disconnected or impersonated) shall be decided and documented before the first powered drive. Follow the open-rnet approach. — P1 · A · *TBD*
 
@@ -31,8 +32,8 @@ In each ID, `X` is the chair's device nibble.
 
 **6.3.2** Joystick frame data shall be two signed 8-bit values in the range −100 to +100:
 
-- **6.3.2.1** Byte 0 (X): turn, from `angular.z` scaled by the angular limit.
-- **6.3.2.2** Byte 1 (Y): forward/back, from `linear.x` scaled by the linear limit.
+- **6.3.2.1** Byte 0 (X): turn, from `angular.z` scaled by the angular limit. Positive X turns right on R-Net (stick left measured X = −96), so X = −`angular.z` scaled, keeping positive `angular.z` a left turn (1.3.5.3).
+- **6.3.2.2** Byte 1 (Y): forward/back, from `linear.x` scaled by the linear limit. Positive Y is forward (stick forward measured Y = +96).
 - **6.3.2.3** Values outside the range shall be clamped, never wrapped.
 
 — P1 · T
