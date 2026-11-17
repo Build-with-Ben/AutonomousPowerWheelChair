@@ -1,0 +1,6 @@
+# Request a mode change through /mode/request (requirement 3.2.1).
+string mode                   # requested mode: idle | manual | test | auto
+---
+bool success                  # true if the request was accepted
+string message                # reason, especially when refused
+string current_mode           # the mode in effect after handling the request

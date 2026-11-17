@@ -5,18 +5,18 @@ Arbitrates the command sources (teleop > test > auto), blocks any source the cur
 mode doesn't allow, clamps the chosen command to the speed limits and limits its rate of
 change, then publishes ``/cmd_vel/mux`` at a fixed 20 Hz (4.1-4.3).
 
-The current mode comes from ``/mode/state`` (std_msgs/String). Until a fresh mode is
-seen, and whenever the mode goes stale, the node falls back to ``default_mode`` (``idle``
-by default), which blocks every source. Runs on the default single-threaded executor, so
-the callbacks never overlap.
+The current mode comes from ``/mode/state`` (wheelchair_msgs/ModeState). Until a fresh
+mode is seen, and whenever the mode goes stale, the node falls back to ``default_mode``
+(``idle`` by default), which blocks every source. Runs on the default single-threaded
+executor, so the callbacks never overlap.
 """
 
 from geometry_msgs.msg import Twist
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
 from wheelchair_control.limits import (
     AccelLimiter, clamp_command, DEFAULT_PRIORITIES, PROFILES, SourceArbiter)
+from wheelchair_msgs.msg import ModeState
 
 SOURCES = ('teleop', 'test', 'auto')
 
@@ -53,7 +53,7 @@ class ControlNode(Node):
             self.create_subscription(
                 Twist, f'cmd_vel/{source}',
                 lambda msg, s=source: self._on_cmd(s, msg), 10)
-        self.create_subscription(String, 'mode/state', self._on_mode, 10)
+        self.create_subscription(ModeState, 'mode/state', self._on_mode, 10)
 
         rate = self.get_parameter('output_rate_hz').value
         self.create_timer(1.0 / rate, self._tick)
@@ -67,7 +67,7 @@ class ControlNode(Node):
         self._arbiter.set_command(source, msg.linear.x, msg.angular.z, self._now())
 
     def _on_mode(self, msg):
-        self._mode = msg.data
+        self._mode = msg.mode
         self._mode_time = self._now()
 
     def _current_mode(self, now):

@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'mode_node = wheelchair_mode.mode_node:main',
         ],
     },
 )
