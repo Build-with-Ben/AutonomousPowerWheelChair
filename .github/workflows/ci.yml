@@ -59,13 +59,17 @@ jobs:
           cat coverage.md >> "$GITHUB_STEP_SUMMARY"
           exit $status
 
-      # Reports coverage of the requirements, and fails on a tag that matches no
-      # requirement (a typo'd ID). Missing P1 tests are still reported, not gated.
+      # Gates on: a tag matching no requirement (a typo'd ID); a P1 "T" requirement with
+      # no test that is not listed in p1_test_debt.txt; and a debt entry that is now
+      # tested, so the list can only shrink.
       - name: Requirement trace
         if: always()
         run: |
           status=0
-          python3 src/tools/req_trace.py --root src > trace.md || status=$?
+          python3 src/tools/req_trace.py --root src \
+            --fail-on-missing-p1 \
+            --allow-missing-p1 src/docs/requirements/p1_test_debt.txt \
+            > trace.md || status=$?
           cat trace.md
           cat trace.md >> "$GITHUB_STEP_SUMMARY"
           exit $status

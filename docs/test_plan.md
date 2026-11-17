@@ -95,9 +95,18 @@ The `req` marker is registered in each package's `setup.cfg`.
 | **I** Inspection | The PR review checklist (§6.4). |
 | **A** Analysis | A short write-up in `docs/` linked from the requirement. |
 
-**4.3 Trace report.** `tools/req_trace.py` reads the requirements and the `@pytest.mark.req` tags,
-then prints which requirements have automated tests. CI adds the report to every run's summary.
-For now it only reports. Once the P1 code exists, CI will fail if any P1 **T** requirement has no test.
+**4.3 Trace report and gate.** `tools/req_trace.py` reads the requirements and the
+`@pytest.mark.req` tags, then prints which requirements have automated tests. CI adds the report to
+every run's summary and fails the build on any of:
+
+- a tag that matches no requirement (a typo'd ID),
+- a P1 **T** requirement with no test that is not listed in
+  [requirements/p1_test_debt.txt](requirements/p1_test_debt.txt),
+- an entry in that debt file that now has a test.
+
+The debt file is a ratchet. It records the P1 requirements still waiting on code, with a reason
+each, so new untested P1 requirements cannot be added while the backlog is worked off; and because
+a newly tested entry fails the build until its line is deleted, the list can only shrink.
 
 ## 5. Test coverage by domain
 
@@ -131,7 +140,7 @@ Runs on every pull request, on every push to `main`, and on demand.
 |---|---|
 | Build | Any package fails to build. |
 | Test | Any lint, unit or node test fails (`colcon test-result` exits non-zero). |
-| Trace | Never, for now (report only). Later: a P1 **T** requirement has no test. |
+| Trace | A tag matches no requirement; a P1 **T** requirement has no test and is not in `p1_test_debt.txt`; a debt entry is now tested. |
 
 Artifacts kept for each run: `pytest.xml` per package, coverage XML, and the trace report.
 
