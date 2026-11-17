@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'safety_node = wheelchair_safety.safety_node:main',
         ],
     },
 )
