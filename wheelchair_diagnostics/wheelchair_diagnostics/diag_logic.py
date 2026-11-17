@@ -31,11 +31,19 @@ def heartbeat_level(last_seen, now, timeout=2.5):
     return (ERROR if age >= timeout else OK), age
 
 
-def jitter_level(jitter, warn=0.002, error=0.005):
-    """Return the level for joystick send jitter in seconds (6.3.1 allows ±2 ms; 7.2.3.4)."""
-    if jitter > error:
+def late_reply_level(late, replies, warn=0.01, error=0.05):
+    """
+    Return the level for the share of joystick replies later than 1 ms (6.3.7, 7.2.3.4).
+
+    A late reply means the PM used the JSM's centred frame for that cycle, so the chair
+    stutters. No replies at all (TX off, or operator override) is OK, not an error.
+    """
+    if replies == 0:
+        return OK
+    ratio = late / replies
+    if ratio > error:
         return ERROR
-    if jitter > warn:
+    if ratio > warn:
         return WARN
     return OK
 

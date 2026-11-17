@@ -17,7 +17,7 @@ requirement is verified.
 | 3 | Mode Management | [03_mode_management.md](03_mode_management.md) | Control & Services | Mode Manager (package TBD) |
 | 4 | Motor Control | [04_motor_control.md](04_motor_control.md) | Control & Services | `wheelchair_control` |
 | 5 | Safety | [05_safety.md](05_safety.md) | Control & Services | `wheelchair_safety` |
-| 6 | CAN Communication | [06_can_communication.md](06_can_communication.md) | Communication | `rnet_bridge`, `ros2_socketcan` |
+| 6 | CAN Communication | [06_can_communication.md](06_can_communication.md) | Communication | `rnet_bridge` |
 | 7 | Diagnostics | [07_diagnostics.md](07_diagnostics.md) | Control & Services | Diagnostics (package TBD) |
 | 8 | Test Sequences | [08_test_sequences.md](08_test_sequences.md) | Application | `wheelchair_test_sequences` |
 | 9 | Platform | [09_platform.md](09_platform.md) | Platform | `wheelchair_bringup` |

@@ -26,7 +26,7 @@ Requirements that apply to the whole stack. Domain-specific requirements refine 
 
 **1.3.2** Every motion command shall pass through Motor Control (4) and then Safety (5) before reaching CAN Communication (6). — P1 · I
 
-**1.3.3** `rnet_bridge` shall be the only node that publishes to `/to_can_bus`. — P1 · I
+**1.3.3** `rnet_bridge` shall be the only process that sends frames on the CAN bus, and the only node that publishes to `/to_can_bus`. — P1 · I
 
 **1.3.4** Custom message and service types shared between packages shall be defined in `wheelchair_msgs`. — P1 · I
 

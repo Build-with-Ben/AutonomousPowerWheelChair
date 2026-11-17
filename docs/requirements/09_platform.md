@@ -4,7 +4,7 @@ Starts the system and records what it does. Package: `wheelchair_bringup`.
 
 ## 9.1 Initialization
 
-**9.1.1** A single launch file shall start the full stack: socketcan sender and receiver, bridge, safety, control, mode manager, teleop and diagnostics. — P1 · T
+**9.1.1** A single launch file shall start the full stack: bridge (which owns the CAN socket), safety, control, mode manager, teleop and diagnostics. — P1 · T
 
 **9.1.2** Launch arguments shall select:
 

@@ -2,7 +2,7 @@
 
 import pytest
 from wheelchair_diagnostics.diag_logic import (
-    battery_level, CurrentStats, ERROR, heartbeat_level, jitter_level, OK, RateCounter,
+    battery_level, CurrentStats, ERROR, heartbeat_level, late_reply_level, OK, RateCounter,
     STALE, WARN)
 
 
@@ -47,12 +47,13 @@ def test_rate_drops_to_zero_when_traffic_stops():
     assert counter.rate(now=2.0) == 0
 
 
-@pytest.mark.req('7.2.3.4', '6.3.1')
-@pytest.mark.parametrize('jitter, level', [
-    (0.0, OK), (0.002, OK), (0.0021, WARN), (0.005, WARN), (0.0051, ERROR),
+@pytest.mark.req('7.2.3.4', '6.3.7')
+@pytest.mark.parametrize('late, replies, level', [
+    (0, 0, OK), (0, 1000, OK), (10, 1000, OK), (11, 1000, WARN), (50, 1000, WARN),
+    (51, 1000, ERROR), (1000, 1000, ERROR),
 ])
-def test_jitter_levels(jitter, level):
-    assert jitter_level(jitter) == level
+def test_late_reply_levels(late, replies, level):
+    assert late_reply_level(late, replies) == level
 
 
 @pytest.mark.req('7.2.4', '5.3.1')

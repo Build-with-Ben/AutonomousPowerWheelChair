@@ -25,7 +25,7 @@ Diagnostics reports. It doesn't stop the motors; Safety does (5).
 - **7.2.3.1** frames sent and received per second
 - **7.2.3.2** send failures
 - **7.2.3.3** frames that couldn't be decoded
-- **7.2.3.4** joystick send jitter (6.3.7)
+- **7.2.3.4** joystick reply delay and late replies (6.3.7)
 
 — P1 · T
 

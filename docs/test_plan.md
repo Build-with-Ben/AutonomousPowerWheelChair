@@ -24,7 +24,7 @@ runs it locally exactly the way CI does.
 | **L0 Static** | Lint, docstrings, build | flake8, pep257, `colcon build` | None | CI | Every push and PR |
 | **L1 Unit** | Pure logic: frame encode/decode, scaling, limits, state machines, watchdog timing | pytest | None | CI + dev PC | Every push and PR |
 | **L2 Node** | One or more nodes talking over topics: e.g. safety zeroes `/cmd_vel/safe` when input stops | launch_testing | None | CI + dev PC | Every push and PR |
-| **L3 Bus** | Full stack down to SocketCAN on `vcan0`: frame IDs, 10 ms period, jitter, bus-loss behavior | launch_testing + python-can | None (vcan) | CI host job + dev PC | Every PR (once the bridge has TX code) |
+| **L3 Bus** | Full stack down to SocketCAN on `vcan0`, with a fixture playing the JSM: frame IDs, reply delay, override, bus-loss behavior | launch_testing + python-can | None (vcan) | CI host job + dev PC | Every PR (once the bridge has TX code) |
 | **L4 Bench (HIL)** | Real transceiver and real power module, **wheels off the ground** | Checklist + rosbag | Dev PC or Pi + chair | Manual | Before every release tag |
 | **L5 Field** | Wheels on the ground, open area | Checklist + rosbag | Pi + chair | Manual | Before raising speed limits or adding features |
 
@@ -42,7 +42,7 @@ These rules keep most tests at L1, where they're fast and need no ROS runtime.
 rnet_bridge/
   rnet_bridge/
     frames.py          # encode_joystick(x, y) -> bytes, decode_status(frame) -> dict   ← L1
-    bridge_node.py     # rclpy Node: subscriptions, 10 ms timer, calls frames.py        ← L2/L3
+    bridge_node.py     # rclpy Node + raw CAN socket, replies to JSM frames            ← L2/L3
   test/
     test_frames.py     # L1
     test_bridge_node.py  # L2 (launch_testing)
@@ -90,9 +90,9 @@ For now it only reports. Once the P1 code exists, CI will fail if any P1 **T** r
 | 2 Operator Input | Axis mapping, deadzone, scaling, deadman logic | `/joy` in → `/cmd_vel/teleop` out; release → zero then silence | — | Real gamepad; disconnect stops chair |
 | 3 Mode Management | Every allowed and refused transition; fault forces Fault | `/mode/request` service; fault on `/safety/state` → Fault in 50 ms | — | Mode changes logged |
 | 4 Motor Control | Speed clamp, reverse limit, accel limiter | twist_mux priority and timeout; mode blocks a source | — | Bring-up profile limits observed |
-| 5 Safety | Each check alone: watchdog, heartbeat, current, e-stop, battery; latch and reset | Input stops → zero in 200 ms; heartbeat stops → latch; reset refused while cause present | Kill safety node → bridge sends 0/0 | All 8.3.3 stop tests |
-| 6 CAN Communication | Joystick encode (scaling, clamping, sign); status decode for each frame ID | `/cmd_vel/safe` → `/to_can_bus` content; stale input → 0/0 | 10 ms ±2 ms period on `vcan0`; extended IDs; TX failure reported | Device nibble, current scale, PM response |
-| 7 Diagnostics | Level thresholds (battery, jitter) | `/diagnostics` published at 1 Hz with right levels | Bus counters move on `vcan0` | Pi temperature and voltage during a run |
+| 5 Safety | Each check alone: watchdog, heartbeat, current, e-stop, battery; latch and reset | Input stops → zero in 200 ms; heartbeat stops → latch; reset refused while cause present | Kill safety node → bridge stops replying | All 8.3.3 stop tests |
+| 6 CAN Communication | Joystick encode (scaling, clamping, sign); status decode for each frame ID; reply and override logic | `/cmd_vel/safe` → `/to_can_bus` content; stale input → no reply | Reply ≤ 1 ms after each fixture JSM frame on `vcan0`; silence while deflected; extended IDs; TX failure reported | Device nibble, current scale, PM response |
+| 7 Diagnostics | Level thresholds (battery, late replies) | `/diagnostics` published at 1 Hz with right levels | Bus counters move on `vcan0` | Pi temperature and voltage during a run |
 | 8 Test Sequences | Step timing and ramp profile from parameters | Refuses start when not OK; aborts on fault in 50 ms | Expected Y values per step on `vcan0` (8.3.2) | Wheels-off forward/back run |
 | 9 Platform | — | Launch file starts every node; `tx_enabled` defaults false | — | Pi boots into Idle with `can0` up |
 | 10 Hardware | — | — | — | Hardware stop, power, wiring checks |
