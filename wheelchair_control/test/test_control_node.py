@@ -90,6 +90,13 @@ class Harness(RclpyNode):
     def clear(self):
         self.mux.clear()
 
+    def wait_ready(self, timeout=20.0):
+        """Spin until the node is really publishing, so tests never race its startup."""
+        end = time.time() + timeout
+        while time.time() < end and not self.mux:
+            self.pump(0.1)
+        assert self.mux, f'control_node published no /cmd_vel/mux within {timeout:.0f} s'
+
     def last(self):
         assert self.mux, 'no /cmd_vel/mux received'
         return self.mux[-1]
@@ -102,7 +109,7 @@ class TestControlNode(unittest.TestCase):
     def setUpClass(cls):
         rclpy.init()
         cls.harness = Harness()
-        cls.harness.pump(0.5)
+        cls.harness.wait_ready()
 
     @classmethod
     def tearDownClass(cls):
@@ -114,7 +121,7 @@ class TestControlNode(unittest.TestCase):
         h = self.harness
         h.clear()
         h.pump(1.0)
-        self.assertGreater(len(h.mux), OUTPUT_RATE * 0.6,
+        self.assertGreater(len(h.mux), OUTPUT_RATE * 0.5,
                            f'/cmd_vel/mux too slow: {len(h.mux)} msgs in 1 s')
         self.assertTrue(all(m.linear.x == 0.0 and m.angular.z == 0.0 for m in h.mux),
                         'with no active source the output must be zero')

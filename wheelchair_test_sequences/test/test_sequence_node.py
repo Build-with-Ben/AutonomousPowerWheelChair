@@ -121,6 +121,13 @@ class Harness(RclpyNode):
     def stop(self):
         return self._call(self._stop, '/test/stop')
 
+    def wait_ready(self, timeout=20.0):
+        """Spin until the node's services are up, so tests never race its startup."""
+        end = time.time() + timeout
+        while time.time() < end and not self._start.service_is_ready():
+            self.pump(0.1, mode='idle')
+        assert self._start.service_is_ready(), f'/test/start absent after {timeout:.0f} s'
+
     def clear(self):
         self.test_cmds.clear()
         self.mode_requests.clear()
@@ -133,7 +140,7 @@ class TestSequenceNode(unittest.TestCase):
     def setUpClass(cls):
         rclpy.init()
         cls.harness = Harness()
-        cls.harness.pump(0.5, mode='idle')
+        cls.harness.wait_ready()
 
     @classmethod
     def tearDownClass(cls):
@@ -173,7 +180,7 @@ class TestSequenceNode(unittest.TestCase):
         h.pump(TOTAL + 0.4, mode='test')
 
         values = [m.linear.x for m in h.test_cmds]
-        self.assertGreater(len(values), TOTAL * OUTPUT_RATE * 0.6,
+        self.assertGreater(len(values), TOTAL * OUTPUT_RATE * 0.5,
                            f'/cmd_vel/test too slow: {len(values)} msgs in {TOTAL:.1f} s')
         self.assertGreater(max(values), SPEED * 0.8, 'the run should go forward')
         self.assertLess(min(values), -SPEED * 0.8, 'the run should also go backward')

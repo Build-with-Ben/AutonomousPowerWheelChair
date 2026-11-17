@@ -90,6 +90,13 @@ class Harness(RclpyNode):
                 return time.time() - start
         return None
 
+    def wait_ready(self, timeout=20.0):
+        """Spin until the node is really publishing, so tests never race its startup."""
+        end = time.time() + timeout
+        while time.time() < end and not self.modes:
+            self.pump(0.1)
+        assert self.modes, f'mode_node published no /mode/state within {timeout:.0f} s'
+
     def clear(self):
         self.modes.clear()
 
@@ -105,7 +112,7 @@ class TestModeNode(unittest.TestCase):
     def setUpClass(cls):
         rclpy.init()
         cls.harness = Harness()
-        cls.harness.pump(0.5)
+        cls.harness.wait_ready()
 
     @classmethod
     def tearDownClass(cls):

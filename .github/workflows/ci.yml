@@ -6,10 +6,17 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# A new push to the same branch supersedes the previous run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-test:
     runs-on: ubuntu-24.04
     container: ros:jazzy-ros-base
+    # L2 launch tests start real nodes; cap the job so a hung test cannot run for hours.
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -19,6 +26,7 @@ jobs:
         with:
           path: src
 
+      # Also verifies 1.2.3: every run-time and test dependency resolves through rosdep.
       - name: Install dependencies
         run: |
           apt-get update
@@ -26,22 +34,41 @@ jobs:
           rosdep update
           rosdep install --from-paths src --ignore-src -y
 
+      # Also verifies 1.2.2: the workspace builds from a fresh clone.
       - name: Build
         run: |
           source /opt/ros/jazzy/setup.bash
           colcon build --event-handlers console_cohesion+
 
+      # L0 lint, L1 logic tests and L2 node tests (launch_testing) all run here.
       - name: Test
         run: |
           source /opt/ros/jazzy/setup.bash
           colcon test --pytest-with-coverage --event-handlers console_cohesion+
           colcon test-result --verbose
 
+      # Gates on the logic modules only. Node files are not instrumented here (the L2
+      # suites run them in a separate process), so they are reported, not gated.
+      - name: Coverage summary
+        if: always()
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          status=0
+          python3 src/tools/coverage_summary.py --build build --min-logic 90 > coverage.md || status=$?
+          cat coverage.md
+          cat coverage.md >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
+      # Reports coverage of the requirements, and fails on a tag that matches no
+      # requirement (a typo'd ID). Missing P1 tests are still reported, not gated.
       - name: Requirement trace
         if: always()
         run: |
-          python3 src/tools/req_trace.py --root src | tee trace.md
+          status=0
+          python3 src/tools/req_trace.py --root src > trace.md || status=$?
+          cat trace.md
           cat trace.md >> "$GITHUB_STEP_SUMMARY"
+          exit $status
 
       - name: Upload test results
         if: always()
@@ -52,4 +79,5 @@ jobs:
             build/*/pytest.xml
             build/*/coverage.xml
             trace.md
+            coverage.md
           if-no-files-found: ignore
