@@ -24,7 +24,7 @@ flowchart TB
 
   subgraph COM["Communication"]
     direction LR
-    rnet["rnet_bridge"] ~~~ rsc["ros2_socketcan"] ~~~ sc["socketcan"]
+    rnet["rnet_bridge"] ~~~ sc["socketcan"]
   end
 
   subgraph EMB["Embedded"]
@@ -67,8 +67,7 @@ flowchart TB
 | Control & Services | Odometry | In progress | Speed, distance, heading (needs encoders) |
 | Control & Services | BMS | Planned | Battery % from PM, low-battery limits |
 | Control & Services | Charging | Planned | Charge state and control |
-| Communication | rnet_bridge | In progress | Twist → joystick frame `02000X00`, decode PM status |
-| Communication | ros2_socketcan | In progress | `/to_can_bus`, `/from_can_bus` |
+| Communication | rnet_bridge | In progress | Owns the CAN socket; replies to JSM joystick frames (FollowJSM), decodes PM status, mirrors frames to `/to_can_bus`, `/from_can_bus` |
 | Communication | socketcan | In progress | Kernel CAN driver, `can0` @ 125 kbps |
 | Embedded | rpi hardware | In progress | Raspberry Pi 3, CAN transceiver |
 | Embedded | wheelchair hardware | In progress | R-Net power module, motors, batteries |

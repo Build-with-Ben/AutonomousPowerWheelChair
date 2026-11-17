@@ -10,38 +10,72 @@ from collections import Counter
 from rnet_bridge import frames
 
 
-class JoystickTx:
-    """Holds the latest ``/cmd_vel/safe`` command and builds each joystick frame."""
+class JoystickFollower:
+    """
+    Replies to the chair joystick module's frames with our own (FollowJSM).
+
+    The bridge never sends joystick frames on its own timer (6.3.1). For each joystick
+    frame received from the JSM it calls ``on_jsm_frame`` and, if that returns a frame,
+    sends it straight away. See docs/analysis/jsm_handling.md.
+    """
 
     def __init__(self, joystick_nibble, linear_limit=0.5, angular_limit=1.0, max_pct=20,
-                 stale_timeout=0.1, tx_enabled=False):
+                 stale_timeout=0.1, rearm_time=0.5, tx_enabled=False):
         self.frame_id = frames.joystick_id(joystick_nibble)
         self.linear_limit = linear_limit
         self.angular_limit = angular_limit
         self.max_pct = max_pct
         self.stale_timeout = stale_timeout
+        self.rearm_time = rearm_time
         self.tx_enabled = tx_enabled
         self._cmd = (0.0, 0.0)
         self._cmd_time = None
+        self._deflected_at = None
 
     def set_command(self, linear_x, angular_z, now):
-        """Store the most recent command (6.3.3)."""
+        """Store the most recent ``/cmd_vel/safe`` command (6.3.3)."""
         self._cmd = (linear_x, angular_z)
         self._cmd_time = now
 
     def joystick_pct(self, now):
-        """Return ``(x, y)`` to send now; ``(0, 0)`` if the command is stale (6.3.4)."""
+        """Return ``(x, y)`` for the latest command, or ``None`` if it is stale (6.3.4)."""
         if self._cmd_time is None or now - self._cmd_time > self.stale_timeout:
-            return 0, 0
+            return None
         linear_x, angular_z = self._cmd
         return frames.twist_to_joystick(linear_x, angular_z, self.linear_limit,
                                         self.angular_limit, self.max_pct)
 
-    def next_frame(self, now):
-        """Return ``(frame_id, data)`` for this 10 ms tick, or ``None`` if TX is off (6.3.5)."""
-        if not self.tx_enabled:
+    def is_jsm_frame(self, frame_id):
+        """Return True if ``frame_id`` is the JSM's joystick frame."""
+        return frame_id == self.frame_id
+
+    def operator_override(self, now):
+        """Return True while the chair's own joystick is deflected or re-arming (6.3.8)."""
+        return (self._deflected_at is not None
+                and now - self._deflected_at < self.rearm_time)
+
+    def on_jsm_frame(self, data, now):
+        """
+        Handle one JSM joystick frame and return ``(frame_id, data)`` to send, or ``None``.
+
+        Deflection is tracked even while TX is disabled, so enabling TX while the chair's
+        joystick is in use doesn't take over from the operator.
+        """
+        try:
+            centred = frames.decode_joystick(data) == (0, 0)
+        except ValueError:
+            centred = False             # malformed: treat as the operator's input
+        if not centred:
+            self._deflected_at = now    # 6.3.8.1
             return None
-        return self.frame_id, frames.encode_joystick(*self.joystick_pct(now))
+        if self.operator_override(now):
+            return None                 # 6.3.8.2
+        if not self.tx_enabled:
+            return None                 # 6.3.5
+        pct = self.joystick_pct(now)
+        if pct is None:
+            return None                 # 6.3.4: stale, let the JSM's centred frame stand
+        return self.frame_id, frames.encode_joystick(*pct)
 
 
 class StatusTracker:
@@ -99,20 +133,25 @@ class TxHealth:
                 and now - self._failing_since >= self.failure_timeout)
 
 
-class JitterMeter:
-    """Measures how far send intervals stray from the nominal period (6.3.7)."""
+class ReplyMeter:
+    """Measures the delay from each JSM frame to our reply (6.3.7)."""
 
-    def __init__(self, period=0.010):
-        self.period = period
-        self.max_jitter = 0.0
-        self._last = None
+    def __init__(self, window=0.001):
+        self.window = window
+        self.replies = 0
+        self.late = 0
+        self.max_delay = 0.0
 
-    def record(self, now):
-        """Record one send time."""
-        if self._last is not None:
-            self.max_jitter = max(self.max_jitter, abs(now - self._last - self.period))
-        self._last = now
+    def record(self, jsm_time, sent_time):
+        """Record one reply, sent at ``sent_time`` for a JSM frame received at ``jsm_time``."""
+        delay = sent_time - jsm_time
+        self.replies += 1
+        if delay > self.window:
+            self.late += 1
+        self.max_delay = max(self.max_delay, delay)
 
     def reset(self):
-        """Start a new measurement window, keeping the last send time."""
-        self.max_jitter = 0.0
+        """Start a new measurement window."""
+        self.replies = 0
+        self.late = 0
+        self.max_delay = 0.0

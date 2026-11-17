@@ -20,6 +20,8 @@ The physical parts the software runs on and drives: Raspberry Pi hardware and wh
 
 **10.2.3** The bus termination shall be checked: the existing R-Net termination shall be kept and no extra terminator added. — P1 · I
 
+**10.2.4** The chair battery floats, so the CAN adapter shall be connected only to a computer running on battery or through a USB isolator, and never while the chair is on its charger. The R-Net +24 V pin (pin 3, red) shall not be connected. — P1 · I
+
 ## 10.3 Hardware stop
 
 **10.3.1** The chair shall have a hardware stop that removes drive power without relying on the Pi, ROS or any software. — P1 · D

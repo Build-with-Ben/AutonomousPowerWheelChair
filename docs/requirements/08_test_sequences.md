@@ -48,11 +48,12 @@ Output: `/cmd_vel/test`. Services: `/test/start`, `/test/stop`.
 
 **8.3.1** The first runs shall be done with the drive wheels off the ground, with a person standing at the hardware stop. — P1 · D
 
-**8.3.2** Before any powered run, the full sequence shall be run on `vcan0`. `candump -td vcan0` shall show:
+**8.3.2** Before any powered run, the full sequence shall be run on `vcan0`, with a test fixture playing the JSM (centred `02000X00` frames every 10 ms). `candump -td vcan0` shall show:
 
-- **8.3.2.1** joystick frames every 10 ms
+- **8.3.2.1** one bridge joystick frame within 1 ms after each fixture frame
 - **8.3.2.2** the expected Y values for each step
 - **8.3.2.3** X = 0 throughout
+- **8.3.2.4** no bridge frames while the fixture sends a deflected frame, and for 0.5 s after (6.3.8)
 
 — P1 · T
 
@@ -61,11 +62,14 @@ Output: `/cmd_vel/test`. Services: `/test/start`, `/test/stop`.
 - **8.3.3.1** Releasing the deadman mid-sequence (teleop override) stops the chair.
 - **8.3.3.2** A software e-stop mid-sequence stops the chair.
 - **8.3.3.3** Killing the safety node stops the chair.
-- **8.3.3.4** Killing the bridge stops the chair (the power module stops when joystick frames stop).
+- **8.3.3.4** Killing the bridge stops the chair (only the JSM's centred frames remain).
 - **8.3.3.5** Unplugging the CAN adapter stops the chair.
 - **8.3.3.6** The hardware stop stops the chair.
+- **8.3.3.7** Moving the chair's own joystick mid-sequence takes over from the sequence (6.3.8).
 
 — P1 · D
+
+**8.3.4** Before the first joystick frame is ever sent to the chair, a tone frame (`181C0X00`) shall be sent with the wheels off the ground, to confirm the adapter can transmit on the R-Net bus. — P1 · D
 
 ## 8.4 Additional sequences
 
