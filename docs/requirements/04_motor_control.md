@@ -7,7 +7,7 @@ Scope: the two drive motors only. Implements and actuators are out of scope (see
 
 ## 4.1 Command arbitration
 
-**4.1.1** Motor Control shall select one command source at a time, using `twist_mux` with these priorities *(param)*:
+**4.1.1** Motor Control shall select one command source at a time, by priority *(param)*. Arbitration is built into `wheelchair_control` rather than using `twist_mux`, so that mode gating (4.1.3) can block a source before it wins and so the logic is unit-tested (L1). Priorities:
 
 - **4.1.1.1** teleop: 100
 - **4.1.1.2** test: 50

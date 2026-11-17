@@ -3,7 +3,81 @@
 import pytest
 from wheelchair_control.limits import (
     AccelLimiter, BRINGUP, clamp_command, DEFAULT_PROFILE, Limits, NORMAL, PROFILES,
-    source_allowed)
+    source_allowed, SourceArbiter)
+
+
+# --- 4.1.1 / 4.1.2 / 4.1.4 arbitration ---------------------------------------------------
+
+@pytest.mark.req('4.1.1')
+def test_highest_priority_fresh_source_wins():
+    a = SourceArbiter()
+    a.set_command('auto', 0.1, 0.0, now=0.0)
+    a.set_command('test', 0.2, 0.0, now=0.0)
+    a.set_command('teleop', 0.3, 0.0, now=0.0)
+    assert a.select('auto', now=0.0) == ('teleop', 0.3, 0.0)
+
+
+@pytest.mark.req('4.1.1', '2.4.2')
+def test_teleop_outranks_other_sources():
+    # teleop and test coexist in Test mode; teleop and auto coexist in Auto mode.
+    # (test and auto never share a mode, so their relative priority is unobservable.)
+    a = SourceArbiter()
+    a.set_command('teleop', 0.3, 0.0, now=0.0)
+    a.set_command('test', 0.2, 0.0, now=0.0)
+    assert a.select('test', now=0.0)[0] == 'teleop'
+    b = SourceArbiter()
+    b.set_command('teleop', 0.3, 0.0, now=0.0)
+    b.set_command('auto', 0.1, 0.0, now=0.0)
+    assert b.select('auto', now=0.0)[0] == 'teleop'
+
+
+@pytest.mark.req('4.1.2')
+def test_stale_source_drops_out():
+    a = SourceArbiter(timeout=0.25)
+    a.set_command('teleop', 0.3, 0.0, now=0.0)
+    a.set_command('test', 0.2, 0.0, now=0.10)
+    assert a.select('test', now=0.25)[0] == 'teleop'    # teleop fresh at the boundary
+    assert a.select('test', now=0.26) == ('test', 0.2, 0.0)   # teleop stale -> test wins
+    assert a.select('test', now=0.36) == (None, 0.0, 0.0)     # test now stale too
+
+
+@pytest.mark.req('4.1.2', '4.1.4')
+def test_all_stale_gives_zero():
+    a = SourceArbiter(timeout=0.25)
+    a.set_command('teleop', 0.3, 0.0, now=0.0)
+    assert a.select('manual', now=0.3) == (None, 0.0, 0.0)
+
+
+@pytest.mark.req('4.1.4')
+def test_no_sources_gives_zero():
+    assert SourceArbiter().select('manual', now=0.0) == (None, 0.0, 0.0)
+
+
+@pytest.mark.req('4.1.3', '3.3.1')
+def test_mode_blocks_disallowed_source():
+    # In Auto mode, teleop and auto are allowed but test is not, even though test
+    # outranks auto. A blocked source cannot win.
+    a = SourceArbiter()
+    a.set_command('test', 0.2, 0.0, now=0.0)
+    a.set_command('auto', 0.1, 0.0, now=0.0)
+    assert a.select('auto', now=0.0)[0] == 'auto'
+
+
+@pytest.mark.req('4.1.3')
+def test_idle_and_fault_block_every_source():
+    a = SourceArbiter()
+    for source in ('teleop', 'test', 'auto'):
+        a.set_command(source, 0.3, 0.0, now=0.0)
+    for mode in ('idle', 'fault', 'estop', 'unknown'):
+        assert a.select(mode, now=0.0) == (None, 0.0, 0.0)
+
+
+@pytest.mark.req('4.1.1')
+def test_custom_priorities():
+    a = SourceArbiter(priorities={'teleop': 1, 'test': 99, 'auto': 0})
+    a.set_command('teleop', 0.3, 0.0, now=0.0)
+    a.set_command('test', 0.2, 0.0, now=0.0)
+    assert a.select('test', now=0.0)[0] == 'test'
 
 
 # --- 4.1.3 / 3.3.1 mode gating -----------------------------------------------------------

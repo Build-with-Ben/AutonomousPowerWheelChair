@@ -20,7 +20,7 @@ flowchart LR
   TEST -->|"/cmd_vel/test · prio 50"| MUX
   AUTO -->|"/cmd_vel/auto · prio 10"| MUX
 
-  MUX["wheelchair_control<br/>twist_mux + limits"] -->|/cmd_vel/mux| SAFE
+  MUX["wheelchair_control<br/>arbitration + limits"] -->|/cmd_vel/mux| SAFE
   ESTOP(["/safety/estop"]) --> SAFE
   SAFE["wheelchair_safety<br/>watchdog · heartbeat · current · e-stop"] -->|/cmd_vel/safe| BRIDGE
 

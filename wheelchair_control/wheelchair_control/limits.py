@@ -1,15 +1,19 @@
 """
-Speed limits, acceleration limits and mode gating for Motor Control (domain 4).
+Command arbitration, speed limits, acceleration limits and mode gating (domain 4).
 
-Pure logic, no rclpy. Command arbitration itself (4.1.1, 4.1.2) is done by ``twist_mux``
-and is tested at L2. This module shapes the selected command and blocks sources the
-current mode doesn't allow.
+Pure logic, no rclpy. Every method that depends on time takes ``now`` in seconds, so
+tests can step time instead of sleeping. SourceArbiter picks one command source by
+priority, dropping sources that are stale or not allowed in the current mode (4.1); the
+rest of the module clamps the chosen command and limits its rate of change (4.2, 4.3).
 """
 
 from dataclasses import dataclass, replace
 
 
 BRINGUP_SCALE = 0.2
+
+# Command source priorities (4.1.1): teleop beats test beats auto.
+DEFAULT_PRIORITIES = {'teleop': 100, 'test': 50, 'auto': 10}
 
 # Sources allowed to drive in each mode (3.1.1). Mode names match /mode/state.
 MODE_SOURCES = {
@@ -72,6 +76,42 @@ def _slew(current, target, accel, decel, dt):
     if abs(target - current) <= step:
         return target
     return current + step if target > current else current - step
+
+
+class SourceArbiter:
+    """
+    Selects one command source at a time (4.1).
+
+    Holds the latest command from each source. ``select`` returns the highest-priority
+    source that is both fresh (seen within ``timeout``, 4.1.2) and allowed in the current
+    mode (4.1.3, 3.3.1). If none qualifies it returns zero (4.1.4).
+    """
+
+    def __init__(self, priorities=None, timeout=0.25):
+        self.priorities = dict(priorities or DEFAULT_PRIORITIES)
+        self.timeout = timeout
+        self._cmd = {}        # source -> (linear_x, angular_z)
+        self._time = {}       # source -> time last received
+
+    def set_command(self, source, linear_x, angular_z, now):
+        """Store the latest command from ``source``."""
+        self._cmd[source] = (linear_x, angular_z)
+        self._time[source] = now
+
+    def active_source(self, mode, now):
+        """Return the source that wins arbitration now, or ``None``."""
+        candidates = [s for s, t in self._time.items()
+                      if now - t <= self.timeout and source_allowed(mode, s)]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda s: self.priorities.get(s, 0))
+
+    def select(self, mode, now):
+        """Return ``(source, linear_x, angular_z)``; ``(None, 0.0, 0.0)`` if none active."""
+        source = self.active_source(mode, now)
+        if source is None:
+            return None, 0.0, 0.0
+        return (source, *self._cmd[source])
 
 
 class AccelLimiter:
