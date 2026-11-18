@@ -15,8 +15,8 @@ setup(
     zip_safe=True,
     maintainer='ben-niemann',
     maintainer_email='benjamin.f.niemann@gmail.com',
-    description='TODO',
-    license='TODO: License declaration',
+    description='Automatic and autonomous control (placeholder interfaces only for now).',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',

@@ -5,7 +5,7 @@
   <version>0.0.0</version>
   <description>Custom messages and services shared across packages, such as R-Net status and safety state.</description>
   <maintainer email="benjamin.f.niemann@gmail.com">ben-niemann</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>rosidl_default_generators</buildtool_depend>

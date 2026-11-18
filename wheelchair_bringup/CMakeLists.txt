@@ -9,8 +9,9 @@ install(DIRECTORY launch config
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # No license headers yet (license is TODO repo-wide), so skip the copyright check,
-  # matching the ament_python packages whose generated test_copyright is skipped.
+  # The project is Apache-2.0 (see ../LICENSE), but source files carry no per-file
+  # copyright headers yet, so skip the copyright check -- matching the ament_python
+  # packages whose generated test_copyright is also skipped. Enable both together.
   set(ament_cmake_copyright_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()

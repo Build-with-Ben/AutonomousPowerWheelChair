@@ -3,9 +3,9 @@
 <package format="3">
   <name>wheelchair_teleop</name>
   <version>0.0.0</version>
-  <description>TODO</description>
+  <description>Manual control: gamepad or joystick to velocity command, with a deadman button.</description>
   <maintainer email="benjamin.f.niemann@gmail.com">ben-niemann</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
   <depend>geometry_msgs</depend>
