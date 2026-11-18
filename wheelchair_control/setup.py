@@ -16,7 +16,7 @@ setup(
     maintainer='ben-niemann',
     maintainer_email='benjamin.f.niemann@gmail.com',
     description='Speed and acceleration limits and mode gating for drive commands',
-    license='TODO: License declaration',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',

@@ -16,7 +16,7 @@ setup(
     maintainer='ben-niemann',
     maintainer_email='benjamin.f.niemann@gmail.com',
     description='System mode state machine (Idle, Manual, Test, Auto, Fault, E-stop)',
-    license='TODO: License declaration',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',

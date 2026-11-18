@@ -16,7 +16,7 @@ setup(
     maintainer='ben-niemann',
     maintainer_email='benjamin.f.niemann@gmail.com',
     description='Safety gate: watchdogs, fault latching, e-stop and reset',
-    license='TODO: License declaration',
+    license='Apache-2.0',
     extras_require={
         'test': [
             'pytest',
