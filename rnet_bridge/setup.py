@@ -28,7 +28,6 @@ setup(
     entry_points={
         'console_scripts': [
             'bridge_node = rnet_bridge.bridge_node:main',
-            'simple_tx_node = rnet_bridge.simple_tx_node:main',
         ],
     },
 )
