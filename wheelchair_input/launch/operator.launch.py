@@ -7,8 +7,8 @@ Use this on its own to try a controller on a development machine without the cha
 let ``wheelchair_bringup`` start the same three nodes as part of the full stack.
 
 Arguments (2.1.2):
-    profile     device profile name from wheelchair_input/config (default gamepad_generic)
-    device_id   which joystick to open when several are plugged in (default 0)
+    profile     device profile name from wheelchair_input/config (default xbox_one)
+    device_id   which joystick to open when several are plugged in (default 1)
     joy_rate    joy_node autorepeat rate in Hz; see the note below (default 25)
     teleop      start teleop_node as well (default true)
 
@@ -35,9 +35,9 @@ def generate_launch_description():
     joy_rate = LaunchConfiguration('joy_rate')
 
     return LaunchDescription([
-        DeclareLaunchArgument('profile', default_value='gamepad_generic',
+        DeclareLaunchArgument('profile', default_value='xbox_one',
                               description='device profile from wheelchair_input/config'),
-        DeclareLaunchArgument('device_id', default_value='0',
+        DeclareLaunchArgument('device_id', default_value='1',
                               description='which joystick to open'),
         DeclareLaunchArgument('joy_rate', default_value='25.0',
                               description='joy_node autorepeat rate in Hz'),
@@ -53,5 +53,7 @@ def generate_launch_description():
              parameters=[{'profile': profile}]),
         Node(package='wheelchair_teleop', executable='teleop_node',
              name='wheelchair_teleop', output='screen',
+             # Matches bringup.yaml; see the note there on the measured stick offset.
+             parameters=[{'deadzone': 0.15}],
              condition=IfCondition(LaunchConfiguration('teleop'))),
     ])

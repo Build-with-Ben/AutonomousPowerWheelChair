@@ -50,7 +50,7 @@ class InputNode(Node):
 
     def __init__(self):
         super().__init__('wheelchair_input')
-        self.declare_parameter('profile', 'gamepad_generic')
+        self.declare_parameter('profile', 'xbox_one')
         self.declare_parameter('profile_path', '')   # overrides 'profile' when set
         self.declare_parameter('enabled', True)      # mute this device without stopping it
         self.declare_parameter('joy_timeout', 0.5)   # warn-only; teleop owns the stop (2.1.3)

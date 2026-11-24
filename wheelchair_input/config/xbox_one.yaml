@@ -1,0 +1,67 @@
+# Xbox One wireless controller through the Xbox Wireless Adapter (xone driver).
+#
+# Measured on the development PC with tools/joy_probe.py:
+#   device    "Xbox One Controller", USB 045e:02d1 via dongle 045e:02e6, xone 0.5.7
+#   /joy      8 axes, 11 buttons (the standard xpad layout)
+#   at rest   [-0.06, -0.05, +1.0, +0.03, -0.03, +1.0, 0.0, 0.0]
+#
+# The two axes resting at exactly +1.0 are the analog triggers and the two at exactly
+# 0.0 are the D-pad hat, which pins the axis layout unambiguously:
+#   0 left stick X   1 left stick Y   2 LT    3 right stick X
+#   4 right stick Y  5 RT             6 hat X 7 hat Y
+#
+# ROS 2's joy_node negates every axis, so a stick pushed UP or LEFT reads positive, which
+# already matches REP-103 (+x forward, +z counter-clockwise) and needs no `invert` on the
+# drive axes. The same negation makes the triggers rest at +1.0 and fall to -1.0 when
+# pulled, which is why both trigger controls below set `invert: true`.
+#
+# The left stick does not rest at centre: measured resting values wandered between
+# +0.01 and -0.11 across runs. At teleop's default 0.1 deadzone a centred stick therefore
+# commanded about -0.004 rad/s while the deadman was held, so bringup raises teleop's
+# deadzone to 0.15. A fixed `trim` here was rejected because the offset moves between
+# runs, which would leave trim wrong in one direction half the time.
+
+name: xbox_one
+description: >
+  Xbox One wireless controller via the xone dongle. Left stick drives, left trigger is
+  the deadman, right trigger is the software e-stop, shoulder buttons change the speed
+  step, and Back+Start together request Manual mode.
+
+# Left stick. Push up to go forward, left to turn left.
+linear:
+  type: axis
+  index: 1
+  invert: false
+angular:
+  type: axis
+  index: 0
+  invert: false
+
+# Left trigger, held to drive (2.3.1, 2.3.2). An analog pull was chosen over a shoulder
+# button because it is a deliberate action that is hard to lean on by accident.
+deadman:
+  type: axis
+  index: 2          # LT
+  threshold: 0.5    # pulled at least halfway counts as held
+  invert: true      # rests at +1.0, goes to -1.0 when pulled
+
+# Right trigger, the software e-stop (2.3.4). Does not replace the hardware stop (10.3).
+# Teleop takes the rising edge, so a pull is one request, not a repeat while held.
+estop:
+  type: axis
+  index: 5          # RT
+  threshold: 0.5
+  invert: true
+
+# Shoulder buttons for the speed scale (2.2.5). Standard xpad indices.
+speed_down:
+  type: button
+  index: 4          # LB
+speed_up:
+  type: button
+  index: 5          # RB
+
+# Two buttons together, so Manual mode cannot be requested by a single knock (2.3.5).
+mode_manual:
+  type: combo
+  indices: [6, 7]   # Back + Start

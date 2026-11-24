@@ -11,7 +11,7 @@ Arguments (9.1.2):
     limits_profile  bringup (default, 20% limits) or normal (4.2.3)
     nodes           all (default), pi (bridge/safety/control/mode) or operator (sources)
     joystick        start the gamepad chain when true; default true (9.1.1)
-    profile         device profile for wheelchair_input; default gamepad_generic (2.1.2)
+    profile         device profile for wheelchair_input; default xbox_one (2.1.2)
 
 Nodes start in stages so a command source never comes up before safety (9.1.3): bridge and
 safety first, then control and the mode manager, then the input sources. Shared parameters
@@ -101,7 +101,7 @@ def generate_launch_description():
                               description='all, pi, or operator'),
         DeclareLaunchArgument('joystick', default_value='true',
                               description='start joy_node, wheelchair_input and teleop'),
-        DeclareLaunchArgument('profile', default_value='gamepad_generic',
+        DeclareLaunchArgument('profile', default_value='xbox_one',
                               description='device profile from wheelchair_input/config'),
         OpaqueFunction(function=_setup),
     ])
