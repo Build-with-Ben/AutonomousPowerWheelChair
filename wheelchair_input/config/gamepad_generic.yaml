@@ -1,0 +1,62 @@
+# Generic twin-stick USB gamepad, as used on the bench.
+#
+# NOT an Xbox pad. A real Xbox One controller through the xone driver presents a
+# different layout (8 axes, 11 buttons, analog triggers, D-pad as a hat), so it wants
+# its own profile rather than edits to this one.
+#
+# Measured on the development PC with `tools/joy_probe.py`:
+#   device    "Controller", USB 0079:0126 (DragonRise generic pad, hid-generic driver)
+#   /joy      6 axes, 13 buttons
+#   at rest   axes 0-3 sit at -0.004 (the two analog sticks)
+#             axes 4-5 sit at exactly 0.000 (the D-pad, reported as a digital hat)
+#
+# UNVERIFIED: the axis numbers below are confirmed, but the *button* numbers are carried
+# over from the previous hard-coded teleop defaults and have not been checked against this
+# pad. Confirm them before driving:
+#
+#     ros2 run joy joy_node --ros-args -p autorepeat_rate:=25.0 &
+#     python3 tools/joy_probe.py --seconds 60
+#
+# ROS 2's joy_node negates every axis, so a stick pushed UP or LEFT reads positive. That
+# already matches REP-103 (+x forward, +z counter-clockwise), so neither drive axis needs
+# `invert` here. A pad whose sticks read the other way sets `invert: true` instead of
+# anything being changed in teleop.
+
+name: gamepad_generic
+description: >
+  Generic twin-stick USB gamepad (DragonRise 0079:0126). Left stick drives, left shoulder
+  is the deadman, B is the software e-stop, triggers change the speed step, and
+  Back+Start together request Manual mode.
+
+# Left stick. Push up to go forward, left to turn left.
+linear:
+  type: axis
+  index: 1
+  invert: false
+angular:
+  type: axis
+  index: 0
+  invert: false
+
+# Hold to drive. Releasing it stops the chair (2.3.1, 2.3.2).
+deadman:
+  type: button
+  index: 4
+
+# Software e-stop only; it does not replace the hardware stop (2.3.4, 10.3).
+estop:
+  type: button
+  index: 1
+
+# Speed scale steps (2.2.5).
+speed_down:
+  type: button
+  index: 6
+speed_up:
+  type: button
+  index: 7
+
+# Two buttons together, so Manual mode cannot be requested by a single knock (2.3.5).
+mode_manual:
+  type: combo
+  indices: [8, 9]

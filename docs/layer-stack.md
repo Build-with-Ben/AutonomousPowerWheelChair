@@ -9,7 +9,7 @@ Solid boxes are in progress. Dashed boxes are planned.
 flowchart TB
   subgraph APP["Application Layer"]
     direction LR
-    teleop ~~~ autonomy ~~~ testing ~~~ navigation ~~~ docking ~~~ tbd1["TBD"] ~~~ tbd2["TBD"] ~~~ tbd3["TBD"]
+    input["operator input"] ~~~ teleop ~~~ autonomy ~~~ testing ~~~ navigation ~~~ docking ~~~ tbd1["TBD"] ~~~ tbd2["TBD"] ~~~ tbd3["TBD"]
   end
 
   subgraph MW["Middleware"]
@@ -54,7 +54,8 @@ flowchart TB
 
 | Layer | Module | Status | Role |
 |---|---|---|---|
-| Application | teleop | In progress | Gamepad → velocity, deadman button |
+| Application | operator input | In progress | Any controller → device-independent operator input, via a YAML device profile |
+| Application | teleop | In progress | Operator input → velocity, deadman button, speed scale |
 | Application | autonomy | Planned | Automatic behaviors |
 | Application | testing | In progress | Scripted forward/back test, aborts on fault |
 | Application | navigation | Planned | Nav2, coverage paths |

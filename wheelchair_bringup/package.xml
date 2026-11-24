@@ -14,6 +14,9 @@
   <exec_depend>wheelchair_control</exec_depend>
   <exec_depend>wheelchair_mode</exec_depend>
   <exec_depend>wheelchair_test_sequences</exec_depend>
+  <exec_depend>wheelchair_input</exec_depend>
+  <exec_depend>wheelchair_teleop</exec_depend>
+  <exec_depend>joy</exec_depend>
   <exec_depend>ros2launch</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>

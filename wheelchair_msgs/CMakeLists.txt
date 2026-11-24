@@ -11,6 +11,7 @@ find_package(std_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/OperatorInput.msg"
   "msg/RnetStatus.msg"
   "msg/SafetyState.msg"
   "msg/ModeState.msg"

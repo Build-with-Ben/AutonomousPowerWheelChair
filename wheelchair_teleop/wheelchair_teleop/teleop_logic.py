@@ -1,8 +1,13 @@
 """
-Gamepad-to-velocity logic for teleop (requirements 2.1-2.3).
+Operator-input-to-velocity logic for teleop (requirements 2.2-2.3).
 
-Pure logic, no rclpy. The node calls ``on_joy`` for each ``/joy`` message and ``tick``
-from its 20 Hz timer, then publishes whatever ``tick`` returns.
+Pure logic, no rclpy. The node calls ``on_input`` for each ``/operator/input`` message
+and ``tick`` from its 20 Hz timer, then publishes whatever ``tick`` returns.
+
+Everything device specific — which stick, which button, which way round — lives in
+``wheelchair_input``'s device profiles (2.1.2), so this module only ever sees named
+functions on a normalised -1..1 scale. Any controller that can produce
+``wheelchair_msgs/OperatorInput`` drives the chair through this one code path.
 """
 
 from dataclasses import dataclass, field
@@ -10,25 +15,20 @@ from dataclasses import dataclass, field
 
 @dataclass
 class TeleopConfig:
-    """Button/axis mapping and limits. Every field is a ROS parameter (2.1.2)."""
+    """Behaviour and limits. Every field is a ROS parameter (2.1.2, 2.2.4)."""
 
-    linear_axis: int = 1
-    angular_axis: int = 0
-    deadman_button: int = 4
-    estop_button: int = 1
-    speed_down_button: int = 6
-    speed_up_button: int = 7
-    manual_mode_buttons: tuple = (8, 9)
     deadzone: float = 0.1
     max_linear: float = 0.5
     max_angular: float = 1.0
-    joy_timeout: float = 0.5
+    input_timeout: float = 0.5
     speed_scales: tuple = (0.25, 0.5, 1.0)
+    #: Device ``source`` names to accept; empty accepts whichever device is publishing.
+    sources: tuple = ()
 
 
 @dataclass
-class JoyEvents:
-    """One-shot requests raised by a ``/joy`` message (button presses, not holds)."""
+class InputEvents:
+    """One-shot requests raised by an input message (presses, not holds)."""
 
     estop: bool = False
     manual_mode: bool = False
@@ -44,46 +44,52 @@ def apply_deadzone(value, deadzone):
 
 @dataclass
 class Teleop:
-    """Deadman, disconnect and speed-scale state for one gamepad."""
+    """Deadman, disconnect and speed-scale state for the operator's control device."""
 
     config: TeleopConfig = field(default_factory=TeleopConfig)
     speed_step: int = 0
-    _axes: tuple = ()
-    _buttons: tuple = ()
-    _last_joy: float = None
+    source: str = ''            # device whose input is in effect
+    _state: object = None       # last accepted OperatorInput-shaped input
+    _last_input: float = None
     _was_driving: bool = False
 
-    def _pressed(self, buttons, index):
-        return index < len(buttons) and bool(buttons[index])
+    def accepts(self, source):
+        """Return whether input from ``source`` is used (the enable/disable seam)."""
+        return not self.config.sources or source in self.config.sources
 
-    def _rising(self, buttons, index):
-        return self._pressed(buttons, index) and not self._pressed(self._buttons, index)
+    @staticmethod
+    def _held(state, name):
+        return bool(state is not None and getattr(state, name, False))
 
-    def on_joy(self, axes, buttons, now):
-        """Store a ``/joy`` message and return any one-shot requests it makes."""
-        cfg = self.config
-        combo = cfg.manual_mode_buttons
-        events = JoyEvents(
-            estop=self._rising(buttons, cfg.estop_button),
-            manual_mode=(all(self._pressed(buttons, b) for b in combo)
-                         and not all(self._pressed(self._buttons, b) for b in combo)),
+    def _rising(self, state, name):
+        return self._held(state, name) and not self._held(self._state, name)
+
+    def on_input(self, state, now):
+        """
+        Store one input message and return the one-shot requests it makes.
+
+        ``state`` is anything with the fields of ``wheelchair_msgs/OperatorInput``.
+        Input from a device this teleop does not accept is ignored entirely.
+        """
+        if not self.accepts(getattr(state, 'source', '')):
+            return InputEvents()
+        events = InputEvents(
+            estop=self._rising(state, 'estop'),
+            manual_mode=self._rising(state, 'mode_manual'),
         )
-        if self._rising(buttons, cfg.speed_up_button):
-            self.speed_step = min(self.speed_step + 1, len(cfg.speed_scales) - 1)
-        if self._rising(buttons, cfg.speed_down_button):
+        if self._rising(state, 'speed_up'):
+            self.speed_step = min(self.speed_step + 1, len(self.config.speed_scales) - 1)
+        if self._rising(state, 'speed_down'):
             self.speed_step = max(self.speed_step - 1, 0)
-        self._axes = tuple(axes)
-        self._buttons = tuple(buttons)
-        self._last_joy = now
+        self._state = state
+        self.source = getattr(state, 'source', '')
+        self._last_input = now
         return events
 
     def connected(self, now):
-        """Return False if no ``/joy`` arrived within ``joy_timeout`` (2.1.3)."""
-        return self._last_joy is not None and now - self._last_joy <= self.config.joy_timeout
-
-    def _axis(self, index):
-        value = self._axes[index] if index < len(self._axes) else 0.0
-        return apply_deadzone(value, self.config.deadzone)
+        """Return False if no input arrived within ``input_timeout`` (2.1.3)."""
+        return (self._last_input is not None
+                and now - self._last_input <= self.config.input_timeout)
 
     def tick(self, now):
         """Return ``(linear_x, angular_z)`` to publish this cycle, or ``None`` to stay silent."""
@@ -91,12 +97,12 @@ class Teleop:
         if not self.connected(now):
             self._was_driving = False   # stop publishing; the watchdog stops the motors (2.3.3)
             return None
-        if not self._pressed(self._buttons, cfg.deadman_button):
+        if not self._held(self._state, 'deadman'):
             if self._was_driving:
                 self._was_driving = False
                 return 0.0, 0.0         # one zero on release (2.3.2)
             return None
         self._was_driving = True
         scale = cfg.speed_scales[self.speed_step]
-        return (self._axis(cfg.linear_axis) * cfg.max_linear * scale,
-                self._axis(cfg.angular_axis) * cfg.max_angular * scale)
+        return (apply_deadzone(self._state.linear, cfg.deadzone) * cfg.max_linear * scale,
+                apply_deadzone(self._state.angular, cfg.deadzone) * cfg.max_angular * scale)
