@@ -69,14 +69,13 @@ def _setup(context, *args, **kwargs):
     # device layout lives in a profile and teleop stays device independent (2.1.2).
     # joy_node needs autorepeat_rate above teleop's publish rate: without it a stick
     # held still produces no /joy messages and teleop's input timeout stops the chair
-    # mid-drive (2.1.3).
+    # mid-drive (2.1.3). It opens the controller by name, so the index may change freely;
+    # see the note in config/bringup.yaml.
     stage3 = []
     if operator_side:
         if joystick:
             stage3.append(Node(package='joy', executable='joy_node', name='joy_node',
-                               output='screen',
-                               parameters=[config, {'autorepeat_rate': 25.0,
-                                                    'deadzone': 0.0}]))
+                               output='screen', parameters=[config]))
             stage3.append(node('wheelchair_input', 'input_node', 'wheelchair_input',
                                {'profile': profile}))
             stage3.append(node('wheelchair_teleop', 'teleop_node', 'wheelchair_teleop'))

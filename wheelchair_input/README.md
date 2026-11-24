@@ -33,7 +33,17 @@ ros2 launch wheelchair_input operator.launch.py profile:=atari_remote
 
 `joy_node` must run with `autorepeat_rate` above teleop's publish rate. Without it, a stick
 held perfectly still produces no `/joy` messages and teleop's input timeout stops the chair
-mid-drive. The launch files set it; if you start `joy_node` by hand, pass it yourself.
+mid-drive. The launch files set it; if you start `joy_node` by hand, pass it yourself. Pass
+`deadzone:=0.0` too, because `joy_node`'s own default is 0.05 and teleop owns the deadzone.
+
+The controller is opened by **name**, not by index, so it does not matter how many other
+input devices are attached or in what order. `joy_node` retries while the named device is
+absent and opens it as soon as it appears, so the machine may boot before the controller is
+switched on. Use the name SDL reports, which is not always the kernel's:
+
+```sh
+ros2 run joy joy_enumerate_devices     # the name to put in device_name
+```
 
 ## Writing a profile for a new controller
 

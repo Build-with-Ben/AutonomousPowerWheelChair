@@ -19,6 +19,7 @@ class Input:
     speed_up: bool = False
     speed_down: bool = False
     mode_manual: bool = False
+    rearm: bool = False
     source: str = 'pad'
 
 
@@ -204,6 +205,49 @@ def test_mode_manual_requests_manual_mode_once_per_press():
     assert not t.on_input(Input(mode_manual=True), now=0.05).manual_mode
     assert not t.on_input(Input(), now=0.10).manual_mode
     assert t.on_input(Input(mode_manual=True), now=0.15).manual_mode
+
+
+# --- 2.3.4 re-arming a latched e-stop ----------------------------------------------------
+
+@pytest.mark.req('2.3.4')
+def test_rearm_requested_once_per_press():
+    t = Teleop(CFG)
+    assert t.on_input(Input(rearm=True), now=0.0).rearm
+    assert not t.on_input(Input(rearm=True), now=0.05).rearm
+    assert not t.on_input(Input(), now=0.10).rearm
+    assert t.on_input(Input(rearm=True), now=0.15).rearm
+
+
+@pytest.mark.req('2.3.4', '2.3.1')
+def test_rearm_refused_while_deadman_held():
+    """Clearing a latched stop must be hands off, never while asking to move."""
+    t = Teleop(CFG)
+    assert not t.on_input(Input(rearm=True, deadman=True), now=0.0).rearm
+
+
+@pytest.mark.req('2.3.4')
+def test_rearm_allowed_once_the_deadman_is_released():
+    t = Teleop(CFG)
+    assert not t.on_input(Input(rearm=True, deadman=True), now=0.0).rearm
+    t.on_input(Input(), now=0.05)
+    assert t.on_input(Input(rearm=True), now=0.10).rearm
+
+
+@pytest.mark.req('2.3.4')
+def test_rearm_and_estop_are_independent_controls():
+    """A press of one must never be read as the other."""
+    t = Teleop(CFG)
+    events = t.on_input(Input(estop=True), now=0.0)
+    assert events.estop and not events.rearm
+    t.on_input(Input(), now=0.05)
+    events = t.on_input(Input(rearm=True), now=0.10)
+    assert events.rearm and not events.estop
+
+
+@pytest.mark.req('2.1.2', '2.3.4')
+def test_unaccepted_source_cannot_rearm():
+    t = Teleop(TeleopConfig(sources=('atari_remote',), speed_scales=(1.0,)))
+    assert not t.on_input(Input(rearm=True, source='other'), now=0.0).rearm
 
 
 # --- 2.1.2 device independence and the enable/disable seam -------------------------------

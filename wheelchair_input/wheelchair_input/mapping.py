@@ -26,6 +26,7 @@ class OperatorState:
     speed_up: bool = False
     speed_down: bool = False
     mode_manual: bool = False
+    rearm: bool = False
 
     @property
     def idle(self):

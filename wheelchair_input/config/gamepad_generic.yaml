@@ -60,3 +60,9 @@ speed_up:
 mode_manual:
   type: combo
   indices: [8, 9]
+
+# Deliberately unmapped: this pad's button indices are unverified, and guessing one for a
+# control that clears a latched e-stop is not worth it. Probe the pad with
+# tools/joy_probe.py and add a combo here before relying on it.
+rearm:
+  type: none

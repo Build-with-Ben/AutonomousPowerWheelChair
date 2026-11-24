@@ -31,9 +31,20 @@
 
 /joy_node:
   ros__parameters:
-    device_id: 1             # js1; the spare DragonRise pad holds js0
+    # Match the controller by name, not by index. A joystick's index depends on how many
+    # other input devices are attached and in what order, so it changes between machines
+    # and between boots; the name does not. joy_node retries while the named device is
+    # absent and opens it when it appears, which is what the Pi needs when it boots before
+    # the controller is switched on. device_id is only a fallback for an unnamed device.
+    #
+    # This is the name SDL reports, which joy_node matches against, and it is NOT the
+    # kernel's name for the same pad: /sys/class/input/js*/device/name says
+    # 'Microsoft Xbox Controller'. Take the string from
+    # `ros2 run joy joy_enumerate_devices`, not from /sys or /proc/bus/input/devices.
+    device_name: 'Xbox One Controller'
+    device_id: 0
     autorepeat_rate: 25.0    # must stay above teleop's output_rate_hz (2.1.3)
-    deadzone: 0.0            # teleop owns the deadzone, as a parameter (2.2.3)
+    deadzone: 0.0            # teleop owns the deadzone; its own default is 0.05 (2.2.3)
 
 /wheelchair_input:
   ros__parameters:

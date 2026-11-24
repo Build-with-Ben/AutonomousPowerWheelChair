@@ -23,6 +23,7 @@ import pytest
 import rclpy
 from rclpy.node import Node as RclpyNode
 from std_msgs.msg import Bool
+from std_srvs.srv import Trigger
 from wheelchair_msgs.msg import OperatorInput
 
 OUTPUT_RATE = 20.0
@@ -53,6 +54,7 @@ def generate_test_description():
             'speed_scales': SPEED_SCALES,
             'deadzone': 0.1,
             'request_manual_mode': False,   # no mode manager runs in this suite
+            'rearm_delay': 0.2,
         }],
         additional_env={'ROS_DOMAIN_ID': ROS_DOMAIN_ID},
     )
@@ -66,7 +68,11 @@ class Harness(RclpyNode):
         super().__init__('teleop_test_harness')
         self.commands = []
         self.estops = []
+        self.resets = []
         self._input_pub = self.create_publisher(OperatorInput, '/operator/input', 10)
+        # Stand in for wheelchair_safety, which does not run in this suite, so the
+        # node's real service call can be observed.
+        self.create_service(Trigger, '/safety/reset', self._on_reset)
         # Deep queues: teleop publishes at 20 Hz and a shallow one drops commands.
         self.create_subscription(Twist, '/cmd_vel/teleop', self.commands.append, 50)
         self.create_subscription(Bool, '/safety/estop', self.estops.append, 10)
@@ -112,6 +118,12 @@ class Harness(RclpyNode):
                 return self.commands[-1]
         return None
 
+    def _on_reset(self, request, response):
+        self.resets.append(request)
+        response.success = True
+        response.message = 'all faults cleared'
+        return response
+
     @staticmethod
     def zeros(commands):
         """Return the commands in ``commands`` that are a full stop."""
@@ -131,6 +143,7 @@ class Harness(RclpyNode):
     def clear(self):
         self.commands.clear()
         self.estops.clear()
+        self.resets.clear()
 
 
 class TestTeleopNode(unittest.TestCase):
@@ -268,6 +281,33 @@ class TestTeleopNode(unittest.TestCase):
         for source in ('gamepad_generic', 'atari_remote', ''):
             msg = h.wait_for_command(send={'deadman': True, 'source': source})
             self.assertIsNotNone(msg, f'input from {source!r} should drive')
+
+    @pytest.mark.req('2.3.4')
+    def test_12_rearm_releases_the_estop_and_resets_safety(self):
+        """A latched stop is cleared by releasing the cause, then resetting (2.3.4)."""
+        h = self.harness
+        h.pump(0.3, send={})          # make sure nothing is held
+        h.clear()
+        end = time.time() + 8.0
+        while time.time() < end and not h.resets:
+            h.send(rearm=True)
+            rclpy.spin_once(h, timeout_sec=0.05)
+        released = [m for m in h.estops if not m.data]
+        self.assertTrue(released,
+                        'a re-arm must publish false on /safety/estop')
+        self.assertTrue(h.resets, 'a re-arm must call /safety/reset')
+
+    @pytest.mark.req('2.3.4', '2.3.1')
+    def test_13_rearm_ignored_while_the_deadman_is_held(self):
+        """Clearing a latched stop must never happen while asking the chair to move."""
+        h = self.harness
+        h.pump(0.3, send={})
+        h.clear()
+        h.pump(1.5, send={'rearm': True, 'deadman': True})
+        self.assertEqual(len(h.resets), 0,
+                         'a re-arm with the deadman held must not reset safety')
+        self.assertEqual([m for m in h.estops if not m.data], [],
+                         'a re-arm with the deadman held must not release the e-stop')
 
 
 @launch_testing.post_shutdown_test()

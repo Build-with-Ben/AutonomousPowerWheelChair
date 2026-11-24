@@ -45,6 +45,9 @@ speed_up:
   index: 7
 
 # No Manual-mode combo on this remote; it stays unmapped, so the function is simply
-# unavailable rather than being triggered by accident.
+# unavailable rather than being triggered by accident. The same goes for re-arming: a
+# remote with this few controls would have to clear a latched e-stop from elsewhere.
 mode_manual:
+  type: none
+rearm:
   type: none

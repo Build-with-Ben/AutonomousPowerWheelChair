@@ -110,13 +110,12 @@ class InputNode(Node):
         out = OperatorInput()
         out.header.stamp = msg.header.stamp    # keep the device's own timestamp
         out.source = state.source
-        out.linear = state.linear
-        out.angular = state.angular
-        out.deadman = state.deadman
-        out.estop = state.estop
-        out.speed_up = state.speed_up
-        out.speed_down = state.speed_down
-        out.mode_manual = state.mode_manual
+        # Copied from the shared field lists rather than named one by one, so a control
+        # added to a profile cannot be silently dropped here.
+        for name in profiles.DRIVE_AXES:
+            setattr(out, name, float(getattr(state, name)))
+        for name in profiles.FUNCTIONS:
+            setattr(out, name, bool(getattr(state, name)))
         self._pub.publish(out)
 
     def _check_silence(self):
