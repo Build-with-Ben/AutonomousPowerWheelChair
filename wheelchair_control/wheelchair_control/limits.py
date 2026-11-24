@@ -32,7 +32,7 @@ class Limits:
 
     max_linear: float = 0.5        # m/s (4.2.1)
     max_angular: float = 1.0       # rad/s (4.2.1)
-    reverse_ratio: float = 0.5     # of max_linear (4.2.2)
+    reverse_ratio: float = 0.75    # of max_linear, not of the command (4.2.2)
     accel_linear: float = 0.5      # m/s^2 (4.3.1)
     accel_angular: float = 1.5     # rad/s^2 (4.3.2)
     decel_linear: float = 1.0      # m/s^2, toward zero (4.3.3)
@@ -51,7 +51,13 @@ def source_allowed(mode, source):
 
 
 def clamp_command(linear_x, angular_z, limits=NORMAL):
-    """Clamp a command to the speed limits, with a lower reverse limit (4.2.1, 4.2.2)."""
+    """
+    Clamp a command to the speed limits, with a lower reverse limit (4.2.1, 4.2.2).
+
+    The reverse limit is a fraction of ``max_linear``, not of the command being clamped,
+    so it is an absolute floor rather than a scaling. A command already inside it is
+    untouched, which is why the reverse cap only bites at the higher speed-scale steps.
+    """
     reverse = limits.max_linear * limits.reverse_ratio
     linear_x = max(-reverse, min(limits.max_linear, linear_x))
     angular_z = max(-limits.max_angular, min(limits.max_angular, angular_z))
