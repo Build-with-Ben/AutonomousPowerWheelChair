@@ -29,6 +29,30 @@
     output_rate_hz: 50.0
     state_rate_hz: 10.0
 
+/joy_node:
+  ros__parameters:
+    device_id: 0             # which joystick to open when several are plugged in
+    autorepeat_rate: 25.0    # must stay above teleop's output_rate_hz (2.1.3)
+    deadzone: 0.0            # teleop owns the deadzone, as a parameter (2.2.3)
+
+/wheelchair_input:
+  ros__parameters:
+    profile: xbox_generic    # device profile name under wheelchair_input/config (2.1.2)
+    profile_path: ''         # absolute path to a profile outside the package; overrides above
+    enabled: true            # set false at runtime to mute this device
+    joy_timeout: 0.5         # warn-only; teleop's input_timeout is what stops the chair
+
+/wheelchair_teleop:
+  ros__parameters:
+    deadzone: 0.1
+    max_linear: 0.5
+    max_angular: 1.0
+    input_timeout: 0.5       # stop publishing if /operator/input goes stale (2.1.3)
+    speed_scales: [0.25, 0.5, 1.0]
+    output_rate_hz: 20.0
+    sources: ['']            # device 'source' names to accept; [''] accepts any
+    request_manual_mode: true
+
 /wheelchair_control:
   ros__parameters:
     source_timeout: 0.25
