@@ -78,3 +78,6 @@ flowchart LR
 
 Safety faults latch until `/safety/reset` is called. The test sequence aborts as soon as
 `/safety/state` reports a fault.
+
+What each control on the handheld does, and the gates that must be open before the
+chair will move, are in [controls.md](controls.md).

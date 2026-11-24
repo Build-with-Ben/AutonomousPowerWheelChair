@@ -21,3 +21,6 @@ publishing when the controller goes quiet (2.1.3, 2.3.3).
 # the whole operator chain, without the chair
 ros2 launch wheelchair_input operator.launch.py
 ```
+
+The operator-facing control reference — what each button does, the gates before the
+chair moves, and how to recover from an e-stop — is in [docs/controls.md](../docs/controls.md).
