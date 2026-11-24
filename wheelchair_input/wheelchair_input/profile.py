@@ -13,8 +13,8 @@ Drive axes (``linear``, ``angular``) produce -1.0 .. +1.0:
                  four direction switches of a dumb digital joystick)
     ``none``     always 0.0
 
-Functions (``deadman``, ``estop``, ``speed_up``, ``speed_down``, ``mode_manual``) produce
-a held/not-held boolean:
+Functions (``deadman``, ``estop``, ``speed_up``, ``speed_down``, ``mode_manual``,
+``rearm``) produce a held/not-held boolean:
     ``button``   one button, by ``index``
     ``combo``    every button in ``indices`` held together
     ``axis``     an analog axis past ``threshold``, for a trigger used as a button
@@ -33,7 +33,7 @@ import yaml
 DRIVE_AXES = ('linear', 'angular')
 
 #: Boolean operator functions every profile may define, in message field order.
-FUNCTIONS = ('deadman', 'estop', 'speed_up', 'speed_down', 'mode_manual')
+FUNCTIONS = ('deadman', 'estop', 'speed_up', 'speed_down', 'mode_manual', 'rearm')
 
 
 class ProfileError(ValueError):

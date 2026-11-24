@@ -13,6 +13,7 @@ PAD = from_dict({
     'speed_up': {'type': 'button', 'index': 7},
     'speed_down': {'type': 'button', 'index': 6},
     'mode_manual': {'type': 'combo', 'indices': [8, 9]},
+    'rearm': {'type': 'combo', 'indices': [2, 3]},
 })
 
 STICK = from_dict({
@@ -59,11 +60,13 @@ def test_each_function_is_set_from_its_own_control():
     assert mapping.apply(axes(), buttons(6)).speed_down
     assert mapping.apply(axes(), buttons(8, 9)).mode_manual
     assert not mapping.apply(axes(), buttons(8)).mode_manual
+    assert mapping.apply(axes(), buttons(2, 3)).rearm
+    assert not mapping.apply(axes(), buttons(2)).rearm
 
 
 @pytest.mark.req('2.1.2')
 def test_unrelated_buttons_set_no_function():
-    state = InputMapping(PAD).apply(axes(), buttons(0, 2, 3, 5, 10, 11))
+    state = InputMapping(PAD).apply(axes(), buttons(0, 5, 10, 11))
     assert not any(getattr(state, name) for name in FUNCTIONS)
 
 

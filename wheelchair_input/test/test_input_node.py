@@ -11,6 +11,7 @@ import os
 import time
 import unittest
 
+from ament_index_python.packages import get_package_share_directory
 import launch
 from launch_ros.actions import Node
 import launch_testing
@@ -22,6 +23,7 @@ import rclpy
 from rclpy.node import Node as RclpyNode
 from rclpy.parameter import Parameter
 from sensor_msgs.msg import Joy
+from wheelchair_input import profile as profiles
 from wheelchair_msgs.msg import OperatorInput
 
 PROFILE = 'gamepad_generic'
@@ -171,6 +173,36 @@ class TestInputNode(unittest.TestCase):
         h = self.harness
         self.assertFalse(h.send_and_wait(buttons=MANUAL_COMBO[:1]).mode_manual)
         self.assertTrue(h.send_and_wait(buttons=MANUAL_COMBO).mode_manual)
+
+    @pytest.mark.req('2.1.2')
+    def test_05c_every_button_mapped_function_reaches_the_message(self):
+        """
+        Guard the node's field copy: a mapped control must not be dropped.
+
+        The node used to assign each message field by name, so a function added to a
+        profile was silently lost between the mapper and the published message. It now
+        copies from the shared field lists, which this test holds it to.
+        """
+        shipped = profiles.load(os.path.join(
+            get_package_share_directory('wheelchair_input'), 'config', f'{PROFILE}.yaml'))
+        h = self.harness
+        checked = []
+        for name in profiles.FUNCTIONS:
+            source = shipped.function(name)
+            if isinstance(source, profiles.ButtonCombo):
+                indices = source.indices
+            elif isinstance(source, profiles.Button):
+                indices = (source.index,)
+            else:
+                continue            # unmapped, or an analog control tested elsewhere
+            self.assertTrue(getattr(h.send_and_wait(buttons=tuple(indices)), name),
+                            f'{name} is mapped to buttons {list(indices)} but never '
+                            f'reached /operator/input')
+            checked.append(name)
+        self.assertGreaterEqual(
+            len(checked), 3,
+            f'only exercised {checked}; this test would pass vacuously, so the '
+            f'suite profile needs more button-mapped functions')
 
     @pytest.mark.req('2.1.2')
     def test_06_short_joy_message_does_not_kill_the_node(self):

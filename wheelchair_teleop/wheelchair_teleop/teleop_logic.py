@@ -32,6 +32,7 @@ class InputEvents:
 
     estop: bool = False
     manual_mode: bool = False
+    rearm: bool = False
 
 
 def apply_deadzone(value, deadzone):
@@ -73,9 +74,14 @@ class Teleop:
         """
         if not self.accepts(getattr(state, 'source', '')):
             return InputEvents()
+        # Re-arming is refused while the deadman is held, so clearing a latched stop is
+        # always a hands-off, deliberate act rather than something that can happen while
+        # the operator is already asking the chair to move (2.3.4).
         events = InputEvents(
             estop=self._rising(state, 'estop'),
             manual_mode=self._rising(state, 'mode_manual'),
+            rearm=(self._rising(state, 'rearm')
+                   and not self._held(state, 'deadman')),
         )
         if self._rising(state, 'speed_up'):
             self.speed_step = min(self.speed_step + 1, len(self.config.speed_scales) - 1)

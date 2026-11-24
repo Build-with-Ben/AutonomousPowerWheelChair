@@ -25,7 +25,7 @@ name: xbox_one
 description: >
   Xbox One wireless controller via the xone dongle. Left stick drives, left trigger is
   the deadman, right trigger is the software e-stop, shoulder buttons change the speed
-  step, and Back+Start together request Manual mode.
+  step, Back+Start request Manual mode and X+Y clear a latched e-stop.
 
 # Left stick. Push up to go forward, left to turn left.
 linear:
@@ -65,3 +65,10 @@ speed_up:
 mode_manual:
   type: combo
   indices: [6, 7]   # Back + Start
+
+# Clears a latched software e-stop. A two-button combo rather than a single press, and
+# teleop additionally ignores it while the deadman is held, so re-arming a stopped chair
+# is always deliberate and hands off. X and Y drive nothing else on this pad.
+rearm:
+  type: combo
+  indices: [2, 3]   # X + Y

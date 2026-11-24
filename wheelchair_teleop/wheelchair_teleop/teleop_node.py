@@ -7,6 +7,13 @@ Wraps the tested :class:`Teleop`. Consumes device-independent ``/operator/input`
 stale (2.1.3, 2.3.3). Raises the software e-stop on ``/safety/estop`` (2.3.4) and requests
 Manual mode through ``/mode/request`` (2.3.5).
 
+The e-stop is sticky on purpose: Safety latches it and refuses to clear a fault whose
+cause is still present, and this node only ever publishes ``true`` from the e-stop
+control. Clearing it therefore needs a separate, deliberate ``rearm`` control, which
+publishes ``false`` and then calls ``/safety/reset``. ``rearm`` is ignored while the
+deadman is held, so re-arming is always hands off. Leaving the fault lands the system in
+Idle, not back in a driving mode, so Manual still has to be requested afterwards.
+
 No axis or button index appears here or in ``teleop_logic``: the device profile in
 ``wheelchair_input`` owns all of that (2.1.2). Runs on the default single-threaded
 executor.
@@ -17,6 +24,7 @@ import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from std_msgs.msg import Bool
+from std_srvs.srv import Trigger
 from wheelchair_msgs.msg import OperatorInput
 from wheelchair_msgs.srv import RequestMode
 from wheelchair_teleop.teleop_logic import Teleop, TeleopConfig
@@ -38,6 +46,9 @@ class TeleopNode(Node):
         # Device 'source' names to accept; empty accepts whichever device publishes.
         self.declare_parameter('sources', [''])
         self.declare_parameter('request_manual_mode', True)
+        # Safety has to see the released e-stop before it will honour the reset, so the
+        # reset is sent a beat after the `false`, not in the same breath.
+        self.declare_parameter('rearm_delay', 0.2)
 
         sources = tuple(s for s in self.get_parameter('sources').value if s)
         self._teleop = Teleop(TeleopConfig(
@@ -49,6 +60,8 @@ class TeleopNode(Node):
             sources=sources,
         ))
         self._request_mode = self.get_parameter('request_manual_mode').value
+        self._rearm_delay = self.get_parameter('rearm_delay').value
+        self._rearm_timer = None
         self._driving = False
         self._speed_step = self._teleop.speed_step
         self._last_source = ''
@@ -57,6 +70,7 @@ class TeleopNode(Node):
         self._estop_pub = self.create_publisher(Bool, 'safety/estop', 10)
         self.create_subscription(OperatorInput, 'operator/input', self._on_input, 10)
         self._mode_client = self.create_client(RequestMode, 'mode/request')
+        self._reset_client = self.create_client(Trigger, 'safety/reset')
 
         rate = self.get_parameter('output_rate_hz').value
         self.create_timer(1.0 / rate, self._publish)
@@ -85,6 +99,39 @@ class TeleopNode(Node):
             self._estop_pub.publish(Bool(data=True))
         if events.manual_mode and self._request_mode:
             self._request_manual()
+        if events.rearm:
+            self._rearm()
+
+    def _rearm(self):
+        """Release the software e-stop, then clear the latched fault (2.3.4)."""
+        self.get_logger().warn('operator re-arm requested; releasing /safety/estop.')
+        self._estop_pub.publish(Bool(data=False))
+        if self._rearm_timer is not None:
+            self._rearm_timer.cancel()
+        self._rearm_timer = self.create_timer(self._rearm_delay, self._send_reset)
+
+    def _send_reset(self):
+        """Call ``/safety/reset`` once, a beat after the e-stop was released."""
+        if self._rearm_timer is not None:
+            self._rearm_timer.cancel()
+            self._rearm_timer = None
+        if not self._reset_client.service_is_ready():
+            self.get_logger().warn('/safety/reset is not available; cannot re-arm.')
+            return
+        future = self._reset_client.call_async(Trigger.Request())
+        future.add_done_callback(self._on_reset_response)
+
+    def _on_reset_response(self, future):
+        try:
+            response = future.result()
+        except Exception as exc:                                  # noqa: BLE001
+            self.get_logger().warn(f'/safety/reset failed: {exc}')
+            return
+        if response.success:
+            self.get_logger().info(
+                f're-armed: {response.message}. Request Manual to drive again.')
+        else:
+            self.get_logger().warn(f're-arm refused: {response.message}')
 
     def _request_manual(self):
         """Ask Mode Management for Manual mode (2.3.5). Fire and forget."""
