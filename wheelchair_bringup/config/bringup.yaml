@@ -37,7 +37,7 @@
 
 /wheelchair_input:
   ros__parameters:
-    profile: xbox_generic    # device profile name under wheelchair_input/config (2.1.2)
+    profile: gamepad_generic    # device profile name under wheelchair_input/config (2.1.2)
     profile_path: ''         # absolute path to a profile outside the package; overrides above
     enabled: true            # set false at runtime to mute this device
     joy_timeout: 0.5         # warn-only; teleop's input_timeout is what stops the chair

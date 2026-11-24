@@ -1,7 +1,7 @@
 """
 L2 node tests for operator input mapping (domain 2.1).
 
-Starts the real input_node with the shipped xbox_generic profile and drives it over
+Starts the real input_node with the shipped gamepad_generic profile and drives it over
 ``/joy``, checking that what comes out of ``/operator/input`` is device independent and
 that a muted device publishes nothing. The node is launched once for the class, so tests
 are numbered to fix their order.
@@ -24,8 +24,8 @@ from rclpy.parameter import Parameter
 from sensor_msgs.msg import Joy
 from wheelchair_msgs.msg import OperatorInput
 
-PROFILE = 'xbox_generic'
-# Indices from config/xbox_generic.yaml. The test asserts the node honours the profile,
+PROFILE = 'gamepad_generic'
+# Indices from config/gamepad_generic.yaml. The test asserts the node honours the profile,
 # so these are the profile's values, not a second copy of a device layout.
 LINEAR_AXIS = 1
 ANGULAR_AXIS = 0

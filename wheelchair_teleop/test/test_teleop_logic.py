@@ -218,21 +218,21 @@ def test_teleop_needs_no_axis_or_button_indices():
 @pytest.mark.req('2.1.2')
 def test_any_source_is_accepted_by_default():
     t = Teleop(CFG)
-    assert t.accepts('xbox_generic') and t.accepts('atari_remote') and t.accepts('')
+    assert t.accepts('gamepad_generic') and t.accepts('atari_remote') and t.accepts('')
 
 
 @pytest.mark.req('2.1.2')
 def test_only_listed_sources_are_accepted_when_configured():
     t = Teleop(TeleopConfig(sources=('atari_remote',), speed_scales=(1.0,)))
     assert t.accepts('atari_remote')
-    assert not t.accepts('xbox_generic')
+    assert not t.accepts('gamepad_generic')
 
 
 @pytest.mark.req('2.1.2', '2.3.1')
 def test_input_from_an_unaccepted_source_is_ignored_entirely():
     """A disabled controller must neither drive nor keep teleop's timeout alive."""
     t = Teleop(TeleopConfig(sources=('atari_remote',), speed_scales=(1.0,)))
-    t.on_input(Input(linear=1.0, deadman=True, source='xbox_generic'), now=0.0)
+    t.on_input(Input(linear=1.0, deadman=True, source='gamepad_generic'), now=0.0)
     assert not t.connected(now=0.0)
     assert t.tick(now=0.0) is None
 

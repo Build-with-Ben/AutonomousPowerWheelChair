@@ -1,4 +1,8 @@
-# Generic USB gamepad with two analog sticks, as used on the bench.
+# Generic twin-stick USB gamepad, as used on the bench.
+#
+# NOT an Xbox pad. A real Xbox One controller through the xone driver presents a
+# different layout (8 axes, 11 buttons, analog triggers, D-pad as a hat), so it wants
+# its own profile rather than edits to this one.
 #
 # Measured on the development PC with `tools/joy_probe.py`:
 #   device    "Controller", USB 0079:0126 (DragonRise generic pad, hid-generic driver)
@@ -18,7 +22,7 @@
 # `invert` here. A pad whose sticks read the other way sets `invert: true` instead of
 # anything being changed in teleop.
 
-name: xbox_generic
+name: gamepad_generic
 description: >
   Generic twin-stick USB gamepad (DragonRise 0079:0126). Left stick drives, left shoulder
   is the deadman, B is the software e-stop, triggers change the speed step, and

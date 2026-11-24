@@ -68,7 +68,7 @@ sign of its deflection, so `index`, `invert` and `trim` can be read straight off
 
 | Profile | Device |
 |---|---|
-| `xbox_generic` | Generic twin-stick USB gamepad (DragonRise 0079:0126), used on the bench |
+| `gamepad_generic` | Generic twin-stick USB gamepad (DragonRise 0079:0126), used on the bench |
 | `atari_remote` | Worked example of a digital joystick and button remote; no hardware yet |
 
 `atari_remote` has no analog axes at all — it builds both drive axes out of four direction

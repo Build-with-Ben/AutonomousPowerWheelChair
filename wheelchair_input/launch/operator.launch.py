@@ -7,7 +7,7 @@ Use this on its own to try a controller on a development machine without the cha
 let ``wheelchair_bringup`` start the same three nodes as part of the full stack.
 
 Arguments (2.1.2):
-    profile     device profile name from wheelchair_input/config (default xbox_generic)
+    profile     device profile name from wheelchair_input/config (default gamepad_generic)
     device_id   which joystick to open when several are plugged in (default 0)
     joy_rate    joy_node autorepeat rate in Hz; see the note below (default 25)
     teleop      start teleop_node as well (default true)
@@ -35,7 +35,7 @@ def generate_launch_description():
     joy_rate = LaunchConfiguration('joy_rate')
 
     return LaunchDescription([
-        DeclareLaunchArgument('profile', default_value='xbox_generic',
+        DeclareLaunchArgument('profile', default_value='gamepad_generic',
                               description='device profile from wheelchair_input/config'),
         DeclareLaunchArgument('device_id', default_value='0',
                               description='which joystick to open'),

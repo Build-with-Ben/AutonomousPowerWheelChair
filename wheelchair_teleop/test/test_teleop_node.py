@@ -265,7 +265,7 @@ class TestTeleopNode(unittest.TestCase):
     def test_11_any_device_source_drives_by_default(self):
         """With no `sources` restriction, whichever device publishes is accepted."""
         h = self.harness
-        for source in ('xbox_generic', 'atari_remote', ''):
+        for source in ('gamepad_generic', 'atari_remote', ''):
             msg = h.wait_for_command(send={'deadman': True, 'source': source})
             self.assertIsNotNone(msg, f'input from {source!r} should drive')
 
