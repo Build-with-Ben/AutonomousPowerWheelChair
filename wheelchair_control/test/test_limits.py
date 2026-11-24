@@ -116,9 +116,26 @@ def test_speed_clamped(cmd, expected):
 
 
 @pytest.mark.req('4.2.2')
-@pytest.mark.parametrize('linear, expected', [(-0.1, -0.1), (-0.25, -0.25), (-0.5, -0.25)])
-def test_reverse_limited_to_half_forward(linear, expected):
+@pytest.mark.parametrize('linear, expected', [
+    (-0.1, -0.1),       # inside the reverse limit, untouched
+    (-0.375, -0.375),   # exactly at it
+    (-0.5, -0.375),     # full reverse, clamped to 75% of the forward limit
+])
+def test_reverse_limited_below_forward(linear, expected):
     assert clamp_command(linear, 0.0)[0] == pytest.approx(expected)
+
+
+@pytest.mark.req('4.2.2')
+def test_reverse_limit_is_a_fraction_of_the_limit_not_of_the_command():
+    """A command already inside the reverse limit must not be scaled down (4.2.2)."""
+    small = clamp_command(-0.2, 0.0)[0]
+    assert small == pytest.approx(-0.2), 'a small reverse command must pass through'
+    assert clamp_command(-10.0, 0.0)[0] == pytest.approx(-0.375)
+
+
+@pytest.mark.req('4.2.2')
+def test_forward_limit_is_unchanged_by_the_reverse_limit():
+    assert clamp_command(10.0, 0.0)[0] == pytest.approx(0.5)
 
 
 @pytest.mark.req('4.2.2')
@@ -133,7 +150,8 @@ def test_bringup_profile_is_20_percent_and_default():
     assert BRINGUP.max_angular == pytest.approx(0.2 * NORMAL.max_angular)
     assert PROFILES[DEFAULT_PROFILE] is BRINGUP
     assert clamp_command(1.0, 1.0, BRINGUP) == pytest.approx((0.1, 0.2))
-    assert clamp_command(-1.0, 0.0, BRINGUP)[0] == pytest.approx(-0.05)
+    assert clamp_command(-1.0, 0.0, BRINGUP)[0] == pytest.approx(
+        -BRINGUP.max_linear * BRINGUP.reverse_ratio)
 
 
 # --- 4.3 acceleration limits -------------------------------------------------------------

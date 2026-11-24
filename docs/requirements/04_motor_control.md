@@ -25,7 +25,7 @@ Scope: the two drive motors only. Implements and actuators are out of scope (see
 
 **4.2.1** Motor Control shall clamp `linear.x` to ±0.5 m/s *(param)* and `angular.z` to ±1.0 rad/s *(param)*. — P1 · T
 
-**4.2.2** Reverse speed shall be limited to 50% *(param)* of the forward limit. — P1 · T
+**4.2.2** Reverse speed shall be limited to 75% *(param)* of the forward limit. The limit is a fraction of the forward limit, not of the command being issued, so it only takes effect above that fraction of full deflection. — P1 · T
 
 **4.2.3** Bring-up limits shall be available as a separate parameter set, at 20% of normal limits, and shall be the default until the wheels-on-ground tests in 8.3 pass. — P1 · I
 
