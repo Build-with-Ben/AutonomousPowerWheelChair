@@ -58,3 +58,6 @@ given is the starting default. **TBD** marks a value still to be measured on the
 - **P1**: needed for the first powered drive.
 - **P2**: needed before driving with the wheels on the ground at normal speed.
 - **P3**: later.
+
+Values that can only be measured on the real chair, and the limits that stay disabled
+until they are, are tracked in [../calibration.md](../calibration.md).

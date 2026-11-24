@@ -12,6 +12,10 @@ Arguments (9.1.2):
     nodes           all (default), pi (bridge/safety/control/mode) or operator (sources)
     joystick        start the gamepad chain when true; default true (9.1.1)
     profile         device profile for wheelchair_input; default xbox_one (2.1.2)
+    max_pct         joystick percent the bridge sends at the full speed limit (6.3.6);
+                    default 20. Note this MULTIPLIES with limits_profile: bringup caps
+                    commands at 20% of the limit, so bringup + max_pct 20 sends only 4%
+                    to the chair. See docs/calibration.md.
 
 Nodes start in stages so a command source never comes up before safety (9.1.3): bridge and
 safety first, then control and the mode manager, then the input sources. Shared parameters
@@ -36,6 +40,7 @@ def _setup(context, *args, **kwargs):
     tx_enabled = LaunchConfiguration('tx_enabled').perform(context).lower() in ('true', '1')
     joystick = LaunchConfiguration('joystick').perform(context).lower() in ('true', '1')
     profile = LaunchConfiguration('profile').perform(context)
+    max_pct = int(LaunchConfiguration('max_pct').perform(context))
     limits_profile = LaunchConfiguration('limits_profile').perform(context)
     which = LaunchConfiguration('nodes').perform(context)
     config = os.path.join(
@@ -53,7 +58,8 @@ def _setup(context, *args, **kwargs):
     stage1 = []
     if pi_side:
         stage1.append(node('rnet_bridge', 'bridge_node', 'rnet_bridge',
-                           {'interface': interface, 'tx_enabled': tx_enabled}))
+                           {'interface': interface, 'tx_enabled': tx_enabled,
+                            'max_pct': max_pct}))
         stage1.append(node('wheelchair_safety', 'safety_node', 'wheelchair_safety'))
 
     # Stage 2: control and the mode manager.
@@ -102,5 +108,8 @@ def generate_launch_description():
                               description='start joy_node, wheelchair_input and teleop'),
         DeclareLaunchArgument('profile', default_value='xbox_one',
                               description='device profile from wheelchair_input/config'),
+        DeclareLaunchArgument('max_pct', default_value='20',
+                              description='joystick percent at the full speed limit; '
+                                          'multiplies with limits_profile'),
         OpaqueFunction(function=_setup),
     ])
