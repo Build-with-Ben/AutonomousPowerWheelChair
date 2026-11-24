@@ -65,7 +65,8 @@ class Teleop:
         return self._held(state, name) and not self._held(self._state, name)
 
     def on_input(self, state, now):
-        """Store one input message and return the one-shot requests it makes.
+        """
+        Store one input message and return the one-shot requests it makes.
 
         ``state`` is anything with the fields of ``wheelchair_msgs/OperatorInput``.
         Input from a device this teleop does not accept is ignored entirely.

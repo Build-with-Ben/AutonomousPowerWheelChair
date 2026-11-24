@@ -1,6 +1,5 @@
 """
-Device profiles: how one controller's raw axes and buttons drive operator functions
-(requirement 2.1.2).
+Device profiles: how a controller's axes and buttons drive operator functions (2.1.2).
 
 Pure logic, no rclpy and no ROS messages. A profile is a YAML document describing one
 physical device; nothing else in the stack knows an axis or button index. Swapping
@@ -42,7 +41,8 @@ class ProfileError(ValueError):
 
 
 def _at(seq, index, default=0.0):
-    """Return ``seq[index]``, or ``default`` when the index is unset or out of range.
+    """
+    Return ``seq[index]``, or ``default`` when the index is unset or out of range.
 
     A short ``/joy`` message or an index left at its -1 default reads as the default
     rather than raising, so a profile written for a 13-button pad does not crash the
@@ -175,8 +175,8 @@ def _build(control, spec, types):
     """Build one source from its YAML mapping, rejecting anything the class cannot take."""
     if not isinstance(spec, dict):
         raise ProfileError(
-            f"{control!r}: expected a mapping such as {{type: button, index: 3}}, "
-            f'got {type(spec).__name__}')
+            f'{control!r}: expected a mapping such as '
+            f'{{type: button, index: 3}}, got {type(spec).__name__}')
     spec = dict(spec)
     kind = spec.pop('type', None)
     if kind not in types:
@@ -187,14 +187,14 @@ def _build(control, spec, types):
     unknown = sorted(set(spec) - allowed)
     if unknown:
         raise ProfileError(
-            f"{control!r}: type {kind!r} has no setting(s) {', '.join(unknown)}; "
-            f"it takes {sorted(allowed) or 'nothing'}")
+            f'{control!r}: type {kind!r} has no setting(s) '
+            f'{", ".join(unknown)}; it takes {sorted(allowed)}')
     required = {f.name for f in fields(cls)
                 if f.default is MISSING and f.default_factory is MISSING}
     missing = sorted(required - set(spec))
     if missing:
         raise ProfileError(
-            f"{control!r}: type {kind!r} needs {', '.join(missing)}")
+            f'{control!r}: type {kind!r} needs {", ".join(missing)}')
     if 'indices' in spec:
         if not isinstance(spec['indices'], (list, tuple)) or not spec['indices']:
             raise ProfileError(f"{control!r}: 'indices' must be a non-empty list")
@@ -222,9 +222,10 @@ def from_dict(doc, name=None):
 
     unknown = sorted(doc)
     if unknown:
+        allowed = ', '.join(('name', 'description') + DRIVE_AXES + FUNCTIONS)
         raise ProfileError(
-            f"unknown key(s) {', '.join(unknown)}; a profile may set 'name', "
-            f"'description', {', '.join(DRIVE_AXES + FUNCTIONS)}")
+            f'unknown key(s) {", ".join(unknown)}; '
+            f'a profile may set {allowed}')
     return Profile(name=profile_name, description=description, axes=axes,
                    functions=functions)
 

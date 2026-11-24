@@ -1,0 +1,50 @@
+# Example profile for a "dumb" digital joystick and button remote: four direction
+# switches plus a few buttons, in the style of an Atari CX40.
+#
+# This profile is NOT wired to any hardware yet. It exists to show that a device with no
+# analog axes at all needs nothing but a profile: the `buttons` axis type builds a drive
+# axis out of two switches, so teleop is unchanged. Whatever carries the remote's state
+# (an ESP32 over wifi, a GPIO reader) only has to publish sensor_msgs/Joy, and
+# wheelchair_input turns it into the same /operator/input every other device produces.
+#
+# Assumed button order from such a driver:
+#   0 up   1 down   2 left   3 right   4 fire/deadman   5 stop   6 slower   7 faster
+#
+# A digital stick is always at full deflection, so speed comes entirely from the speed
+# scale. Start it at the lowest step (teleop already does) and keep the step count small.
+
+name: atari_remote
+description: >
+  Example digital joystick and button remote: four direction switches as two drive axes,
+  fire as the deadman, and a dedicated stop button. Not yet connected to hardware.
+
+# Four switches become two axes. Up and down together reads as zero (see ButtonAxis).
+linear:
+  type: buttons
+  plus: 0           # up    -> forward
+  minus: 1          # down  -> reverse
+angular:
+  type: buttons
+  plus: 2           # left  -> turn left (+angular.z, REP-103)
+  minus: 3          # right -> turn right
+
+# The fire button is the deadman: the chair moves only while it is held (2.3.1).
+deadman:
+  type: button
+  index: 4
+
+estop:
+  type: button
+  index: 5
+
+speed_down:
+  type: button
+  index: 6
+speed_up:
+  type: button
+  index: 7
+
+# No Manual-mode combo on this remote; it stays unmapped, so the function is simply
+# unavailable rather than being triggered by accident.
+mode_manual:
+  type: none
